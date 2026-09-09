@@ -1,0 +1,112 @@
+import type { RecurringObligation, TransactionForAnalytics } from '@/domain/types/analytics';
+
+/**
+ * Deteccion de recurrencias — heuristica deliberadamente simple para un
+ * primer motor de inteligencia proactiva:
+ *   - Agrupa gastos CONFIRMADOS por descripcion normalizada exacta (no hace
+ *     fuzzy matching; "Arriendo enero" y "Arriendo" no se agrupan entre si —
+ *     limitacion conocida, mejorable a futuro con similitud de texto).
+ *   - Solo considera un grupo "recurrente" si tiene 2+ ocurrencias, montos
+ *     estables (dentro de un 15% entre si) y al menos un espaciado de ~1 mes
+ *     entre dos ocurrencias consecutivas.
+ * Pura y sin dependencias de framework: se ejecuta en el servidor
+ * (Server Action) sobre datos ya confirmados, nunca sobre pendientes —
+ * el motor de patrones no alucina sobre datos que la persona no valido.
+ */
+
+const MIN_OCCURRENCES = 2;
+const AMOUNT_TOLERANCE_RATIO = 1.15;
+const MIN_GAP_DAYS = 24;
+const MAX_GAP_DAYS = 36;
+const GRACE_DAYS = 3;
+const DAY_MS = 86_400_000;
+
+function normalizeDescription(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function dayOfMonth(iso: string): number {
+  return new Date(iso).getUTCDate();
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function addApproxMonth(iso: string, expectedDay: number): Date {
+  const d = new Date(iso);
+  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  const daysInNextMonth = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+  next.setUTCDate(Math.min(expectedDay, daysInNextMonth));
+  return next;
+}
+
+export function detectRecurringObligations(
+  transactions: TransactionForAnalytics[],
+  referenceDate: Date = new Date(),
+): RecurringObligation[] {
+  const groups = new Map<string, TransactionForAnalytics[]>();
+
+  for (const tx of transactions) {
+    if (tx.type !== 'expense' || !tx.description) continue;
+    const key = normalizeDescription(tx.description);
+    if (!key) continue;
+    const list = groups.get(key) ?? [];
+    list.push(tx);
+    groups.set(key, list);
+  }
+
+  const obligations: RecurringObligation[] = [];
+
+  for (const [key, txs] of groups) {
+    if (txs.length < MIN_OCCURRENCES) continue;
+
+    const sorted = [...txs].sort(
+      (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
+    );
+    const amounts = sorted.map((t) => t.amountOriginal);
+    const maxAmount = Math.max(...amounts);
+    const minAmount = Math.min(...amounts);
+    if (minAmount <= 0 || maxAmount / minAmount > AMOUNT_TOLERANCE_RATIO) continue;
+
+    let hasMonthlyGap = false;
+    for (let i = 1; i < sorted.length; i++) {
+      const gapDays =
+        (new Date(sorted[i].transactionDate).getTime() - new Date(sorted[i - 1].transactionDate).getTime()) / DAY_MS;
+      if (gapDays >= MIN_GAP_DAYS && gapDays <= MAX_GAP_DAYS) {
+        hasMonthlyGap = true;
+        break;
+      }
+    }
+    if (!hasMonthlyGap) continue;
+
+    const last = sorted[sorted.length - 1];
+    const expectedDay = Math.round(median(sorted.map((t) => dayOfMonth(t.transactionDate))));
+    const averageAmount = Math.round((amounts.reduce((sum, a) => sum + a, 0) / amounts.length) * 100) / 100;
+    const nextExpected = addApproxMonth(last.transactionDate, expectedDay);
+
+    const daysOverdueRaw = Math.floor((referenceDate.getTime() - nextExpected.getTime()) / DAY_MS) - GRACE_DAYS;
+
+    obligations.push({
+      key,
+      description: last.description ?? key,
+      averageAmount,
+      occurrences: sorted.length,
+      expectedDayOfMonth: expectedDay,
+      lastOccurrenceDate: last.transactionDate,
+      nextExpectedDate: nextExpected.toISOString(),
+      isOverdue: daysOverdueRaw > 0,
+      daysOverdue: Math.max(0, daysOverdueRaw),
+    });
+  }
+
+  return obligations.sort((a, b) => b.daysOverdue - a.daysOverdue);
+}
+
+/** true si alguna de las fechas dadas cae en el mismo dia (UTC) que referenceDate. */
+export function hasTransactionOnDate(transactionDates: string[], referenceDate: Date = new Date()): boolean {
+  const refKey = referenceDate.toISOString().slice(0, 10);
+  return transactionDates.some((iso) => iso.slice(0, 10) === refKey);
+}
