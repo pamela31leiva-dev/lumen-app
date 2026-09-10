@@ -6,6 +6,8 @@ import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import type {
   AccountBalancesData,
   CategoryOption,
+  ImpactSummary,
+  ImpactTopCategory,
   MemberRole,
   PendingTransactionSummary,
   SpaceSummary,
@@ -142,7 +144,7 @@ export async function getPendingTransactions(spaceId: string): Promise<PendingTr
   const { data, error } = await supabase
     .from('transactions')
     .select(
-      'id, type, status, source, description, amount_original, currency_original, confidence_score, ai_raw_interpretation, account_id, category_id, transaction_date, receipt_id, created_at',
+      'id, type, status, source, description, amount_original, currency_original, confidence_score, ai_raw_interpretation, account_id, category_id, transaction_date, receipt_id, created_at, tags',
     )
     .eq('space_id', spaceId)
     .eq('status', 'pending_confirmation')
@@ -170,8 +172,14 @@ export async function getPendingTransactions(spaceId: string): Promise<PendingTr
     transactionDate: row.transaction_date,
     receiptId: row.receipt_id,
     createdAt: row.created_at,
+    tags: Array.isArray(row.tags) ? row.tags : [],
     clarificationQuestion:
       (row.ai_raw_interpretation as { clarification_question?: string | null } | null)?.clarification_question ?? null,
+    suggestedSpaceId:
+      (row.ai_raw_interpretation as { resolved_suggested_space_id?: string | null } | null)?.resolved_suggested_space_id ??
+      null,
+    suggestedSpaceName:
+      (row.ai_raw_interpretation as { suggested_space_name?: string | null } | null)?.suggested_space_name ?? null,
   }));
 }
 
@@ -185,7 +193,7 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
 
   const { data, error } = await supabase
     .from('transactions')
-    .select('id, type, description, amount_original, currency_original, transaction_date, category:categories(name)')
+    .select('id, type, description, amount_original, currency_original, transaction_date, tags, category:categories(name)')
     .eq('space_id', spaceId)
     .eq('status', 'confirmed')
     .order('transaction_date', { ascending: false })
@@ -198,6 +206,7 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
         amount_original: number;
         currency_original: string;
         transaction_date: string;
+        tags: string[] | null;
         category: { name: string } | null;
       }[]
     >();
@@ -215,7 +224,103 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
     currencyOriginal: row.currency_original,
     categoryName: row.category?.name ?? null,
     transactionDate: row.transaction_date,
+    tags: Array.isArray(row.tags) ? row.tags : [],
   }));
+}
+
+/**
+ * "Tu año en numeros" — estructura base del Resumen de Impacto (retencion +
+ * marketing organico estilo Spotify Wrapped). Calcula sobre transacciones
+ * CONFIRMADAS de los ultimos `months` meses; nunca pendientes, y nunca hace
+ * el LLM estos calculos (son deterministicos, igual que account_balances).
+ */
+export async function getImpactSummary(spaceId: string, months = 12): Promise<ImpactSummary | null> {
+  const supabase = await getSupabaseServerClient();
+
+  const { data: space } = await supabase.from('spaces').select('name, base_currency').eq('id', spaceId).single();
+  if (!space) return null;
+
+  const periodEnd = new Date();
+  const periodStart = new Date(periodEnd);
+  periodStart.setMonth(periodStart.getMonth() - months);
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('type, description, amount_original, transaction_date, category:categories(name)')
+    .eq('space_id', spaceId)
+    .eq('status', 'confirmed')
+    .gte('transaction_date', periodStart.toISOString())
+    .lte('transaction_date', periodEnd.toISOString())
+    .returns<
+      {
+        type: 'income' | 'expense' | 'transfer';
+        description: string | null;
+        amount_original: number;
+        transaction_date: string;
+        category: { name: string } | null;
+      }[]
+    >();
+
+  if (error || !data) {
+    console.error('Error al calcular el resumen de impacto:', error);
+    return null;
+  }
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  const categoryTotals = new Map<string, { total: number; count: number }>();
+  const monthCounts = new Map<string, number>();
+  const activeDays = new Set<string>();
+  let biggestExpense: ImpactSummary['biggestExpense'] = null;
+
+  for (const row of data) {
+    const amount = Number(row.amount_original);
+    const day = row.transaction_date.slice(0, 10);
+    activeDays.add(day);
+
+    const monthLabel = new Date(row.transaction_date).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    monthCounts.set(monthLabel, (monthCounts.get(monthLabel) ?? 0) + 1);
+
+    if (row.type === 'income') {
+      totalIncome += amount;
+    } else if (row.type === 'expense') {
+      totalExpense += amount;
+      const categoryName = row.category?.name ?? 'Sin categoria';
+      const current = categoryTotals.get(categoryName) ?? { total: 0, count: 0 };
+      categoryTotals.set(categoryName, { total: current.total + amount, count: current.count + 1 });
+
+      if (!biggestExpense || amount > biggestExpense.amount) {
+        biggestExpense = { description: row.description, amount, date: row.transaction_date };
+      }
+    }
+  }
+
+  const topExpenseCategories: ImpactTopCategory[] = [...categoryTotals.entries()]
+    .map(([name, v]) => ({ name, totalAmount: v.total, transactionCount: v.count }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .slice(0, 3);
+
+  let busiestMonth: ImpactSummary['busiestMonth'] = null;
+  for (const [label, count] of monthCounts.entries()) {
+    if (!busiestMonth || count > busiestMonth.transactionCount) {
+      busiestMonth = { label, transactionCount: count };
+    }
+  }
+
+  return {
+    spaceName: space.name,
+    baseCurrency: space.base_currency,
+    periodLabel: months >= 12 ? 'Ultimos 12 meses' : `Ultimos ${months} meses`,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+    totalIncome,
+    totalExpense,
+    transactionCount: data.length,
+    topExpenseCategories,
+    biggestExpense,
+    busiestMonth,
+    activeDayCount: activeDays.size,
+  };
 }
 
 /** Plan del usuario autenticado. Sin fila (usuarios previos al 0008 no respaldados) = Gratis/activo por default. */

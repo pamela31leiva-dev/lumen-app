@@ -58,6 +58,15 @@ export function TransactionHistoryList({ spaceId, items, canDelete }: Transactio
               <p className="text-xs text-stone-500">
                 {new Date(item.transactionDate).toLocaleDateString('es-CO')} · {item.categoryName ?? TYPE_LABEL[item.type]}
               </p>
+              {item.tags.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {item.tags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-stone-400">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <span className="amount text-sm text-stone-300">

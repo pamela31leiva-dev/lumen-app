@@ -112,8 +112,11 @@ export class OpenAiExtractionProvider implements AiExtractionPort {
       confidence_score: Math.min(1, Math.max(0, parsed.confidence_score)),
       uncertainties: parsed.uncertainties,
       // Motor de pago sin uso activo en modo $0; la clarificacion
-      // interactiva solo esta implementada en GeminiExtractionProvider.
+      // interactiva, etiquetas y sugerencia de espacio solo estan
+      // implementadas en GeminiExtractionProvider.
       clarification_question: null,
+      suggested_tags: [],
+      suggested_space_name: null,
     };
   }
 }

@@ -27,7 +27,7 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
 
   const { data: space, error: spaceError } = await supabase
     .from('spaces')
-    .select('base_currency')
+    .select('name, base_currency')
     .eq('id', payload.space_id)
     .single();
   if (spaceError || !space) {
@@ -42,6 +42,18 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
     .limit(20);
   const learnedHints = (hintRows ?? []).map((h) => `${h.question} -> ${h.answer}`);
 
+  // Otros espacios del usuario, para que la IA pueda detectar si el texto
+  // pertenece claramente a uno de ellos en vez de al activo (evita friccion
+  // de tener que cambiar de espacio manualmente antes de capturar).
+  const { data: otherSpaceRows } = await supabase
+    .from('space_members')
+    .select('space:spaces(id, name)')
+    .eq('user_id', user.id)
+    .returns<{ space: { id: string; name: string } | null }[]>();
+  const otherSpaces = (otherSpaceRows ?? [])
+    .map((r) => r.space)
+    .filter((s): s is { id: string; name: string } => s !== null && s.id !== payload.space_id);
+
   let extraction;
   try {
     const ai = getAiExtractionAdapter();
@@ -52,6 +64,8 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       mimeType: payload.mime_type,
       baseCurrency: space.base_currency,
       learnedHints,
+      activeSpaceName: space.name,
+      otherSpaceNames: otherSpaces.map((s) => s.name),
     });
   } catch (err) {
     await reportError({
@@ -66,6 +80,17 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
     };
   }
 
+  // La IA solo puede nombrar un espacio de los que se le paso como contexto,
+  // pero igual se resuelve contra la lista real (nunca se confia un id
+  // inventado por el LLM) y solo se guarda si hay un match exacto.
+  const matchedSpace = extraction.suggested_space_name
+    ? otherSpaces.find((s) => s.name.trim().toLowerCase() === extraction.suggested_space_name!.trim().toLowerCase())
+    : undefined;
+  const enrichedExtraction = {
+    ...extraction,
+    resolved_suggested_space_id: matchedSpace?.id ?? null,
+  };
+
   let receiptId: string | null = null;
   const { data: receipt, error: receiptError } = await supabase
     .from('receipts')
@@ -77,7 +102,7 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       mime_type: payload.mime_type ?? null,
       original_filename: payload.original_filename ?? null,
       raw_transcript: payload.raw_text ?? null,
-      ai_extracted_data: extraction,
+      ai_extracted_data: enrichedExtraction,
       confidence_score: extraction.confidence_score,
       status: 'pending_confirmation',
     })
@@ -107,10 +132,11 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       source: payload.capture_source,
       status: 'pending_confirmation',
       confidence_score: extraction.confidence_score,
-      ai_raw_interpretation: extraction,
+      ai_raw_interpretation: enrichedExtraction,
       description: extraction.concept ?? extraction.merchant_name ?? null,
       transaction_date: extraction.transaction_date ?? new Date().toISOString(),
       created_by: user.id,
+      tags: extraction.suggested_tags ?? [],
     })
     .select('id')
     .single();

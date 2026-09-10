@@ -7,6 +7,7 @@ import { CreateSpaceDialog } from '@/components/dashboard/CreateSpaceDialog';
 import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SessionPreferenceInfo } from '@/components/dashboard/SessionPreferenceInfo';
 import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
+import { ImpactSummaryModal } from '@/components/dashboard/ImpactSummaryModal';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -88,7 +89,10 @@ export default async function SettingsPage() {
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-medium text-stone-200">Historial de movimientos</h2>
-            <span className="text-xs text-stone-500">Ultimos {transactionHistory.length}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-stone-500">Ultimos {transactionHistory.length}</span>
+              <ImpactSummaryModal spaceId={activeSpace.id} />
+            </div>
           </div>
           <div className="mt-3">
             <TransactionHistoryList spaceId={activeSpace.id} items={transactionHistory} canDelete={canEditSpace} />

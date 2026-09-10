@@ -119,10 +119,12 @@ export class AnthropicExtractionProvider implements AiExtractionPort {
       transaction_date: null,
       confidence_score: Math.min(1, Math.max(0, parsed.confidence_score)),
       uncertainties: parsed.uncertainties,
-      // La clarificacion interactiva solo esta implementada en
-      // GeminiExtractionProvider (el motor $0); si Anthropic falla, el
-      // respaldo automatico a Gemini si la aplica.
+      // La clarificacion interactiva, etiquetas y sugerencia de espacio solo
+      // estan implementadas en GeminiExtractionProvider (el motor $0); si
+      // Anthropic falla, el respaldo automatico a Gemini si las aplica.
       clarification_question: null,
+      suggested_tags: [],
+      suggested_space_name: null,
     };
   }
 }

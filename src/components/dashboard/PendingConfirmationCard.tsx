@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { confirmTransaction, rejectPendingTransaction } from '@/actions/confirm';
+import { confirmTransaction, moveTransactionToSpace, rejectPendingTransaction } from '@/actions/confirm';
 import { getReceiptSignedUrl } from '@/actions/dashboard';
 import { saveClassificationHint } from '@/actions/classification';
 import type { TransactionType } from '@/domain/types/capture';
@@ -36,6 +36,8 @@ export function PendingConfirmationCard({
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [clarificationAnswered, setClarificationAnswered] = useState(false);
   const [clarificationAnswer, setClarificationAnswer] = useState('');
+  const [spaceSuggestionDismissed, setSpaceSuggestionDismissed] = useState(false);
+  const [tagsInput, setTagsInput] = useState(transaction.tags.join(', '));
 
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [accountId, setAccountId] = useState(transaction.accountId ?? '');
@@ -83,6 +85,10 @@ export function PendingConfirmationCard({
         description: description || null,
         transaction_date: new Date(date).toISOString(),
         receipt_id: transaction.receiptId,
+        tags: tagsInput
+          .split(',')
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean),
       });
 
       if (!result.success) {
@@ -129,6 +135,19 @@ export function PendingConfirmationCard({
     });
   }
 
+  function handleMoveToSuggestedSpace() {
+    if (!transaction.suggestedSpaceId) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await moveTransactionToSpace(transaction.id, spaceId, transaction.suggestedSpaceId!);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   function handleViewDocument() {
     const receiptId = transaction.receiptId;
     if (!receiptId) return;
@@ -164,6 +183,33 @@ export function PendingConfirmationCard({
           </span>
         )}
       </div>
+
+      {transaction.suggestedSpaceId && transaction.suggestedSpaceName && !spaceSuggestionDismissed && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-600/30 bg-emerald-600/10 p-3">
+          <p className="text-sm text-stone-100">
+            Esto parece ser de <span className="font-medium text-emerald-400">{transaction.suggestedSpaceName}</span>, no
+            de este espacio.
+          </p>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={handleMoveToSuggestedSpace}
+              disabled={isPending}
+              className="rounded-lg bg-emerald-600/90 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-600 disabled:opacity-50"
+            >
+              Mover a {transaction.suggestedSpaceName}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSpaceSuggestionDismissed(true)}
+              disabled={isPending}
+              className="rounded-lg px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200"
+            >
+              Dejar aqui
+            </button>
+          </div>
+        </div>
+      )}
 
       {transaction.clarificationQuestion && !clarificationAnswered && (
         <div className="mt-3 rounded-lg border border-gold/30 bg-gold/10 p-3">
@@ -358,6 +404,17 @@ export function PendingConfirmationCard({
             onChange={(e) => setDescription(e.target.value)}
             className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-stone-300">Etiquetas (opcional)</label>
+          <input
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+            placeholder="ej. lonchera, colegio"
+            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+          />
+          <p className="mt-1 text-[11px] text-stone-500">Separadas por comas. Sirven para agrupar iniciativas dentro de este espacio.</p>
         </div>
       </div>
 

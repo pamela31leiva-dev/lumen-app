@@ -859,4 +859,8 @@ alter table public.system_logs alter column level set default 'error';
 alter table public.system_logs add column if not exists user_id uuid references public.profiles(id) on delete set null;
 alter table public.system_logs add column if not exists space_id uuid references public.spaces(id) on delete set null;
 
+-- 0010: etiquetas de subproyecto por transaccion ------------------------------
+alter table public.transactions add column if not exists tags text[] not null default '{}';
+create index if not exists idx_transactions_tags on public.transactions using gin (tags);
+
 commit;

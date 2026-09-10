@@ -22,6 +22,15 @@ export interface AiExtractionInput {
    * Opcional: los proveedores que no lo usen simplemente lo ignoran.
    */
   learnedHints?: string[];
+  /** Nombre del espacio donde el usuario esta capturando ahora mismo. */
+  activeSpaceName?: string;
+  /**
+   * Nombres de los OTROS espacios del usuario (Personal/Familiar/Negocio/
+   * Proyecto), para que la IA pueda detectar si el texto pertenece
+   * claramente a uno de ellos en vez de al activo. [] o ausente si el
+   * usuario solo tiene un espacio.
+   */
+  otherSpaceNames?: string[];
 }
 
 export interface AiExtractionPort {

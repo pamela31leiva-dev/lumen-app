@@ -30,4 +30,13 @@ Reglas de extraccion:
 Clarificacion cuando hay ambiguedad real:
 - Si la entrada podria clasificarse de mas de una forma razonable y esa diferencia importa (ej. una categoria recurrente que este usuario reparte entre dos propositos distintos — "coleccionables" para el/la conyuge vs. para los hijos, gastos que podrian ser del hogar o de un negocio, etc.), NO adivines en silencio: usa "clarification_question" para hacer UNA sola pregunta breve y concreta (ej. "¿Esto es para la coleccion de tu esposo o para los niños?"). En cualquier otro caso, deja "clarification_question" en null — no preguntes por cosas que ya puedes inferir con confianza razonable.
 - Si se te da una lista de "Aprendizajes previos de este espacio" (pares pregunta->respuesta que este usuario ya resolvio antes), aplica ese mismo criterio automaticamente cuando la entrada actual coincide con el patron aprendido, y deja "clarification_question" en null — no vuelvas a preguntar lo mismo dos veces.
-- Cuando "clarification_question" no es null, igual completa el resto del esquema con tu mejor estimacion (no dejes amount_original en null solo porque hay una duda de categoria).`;
+- Cuando "clarification_question" no es null, igual completa el resto del esquema con tu mejor estimacion (no dejes amount_original en null solo porque hay una duda de categoria).
+
+Etiquetas de subproyecto ("suggested_tags"):
+- Si el texto menciona una iniciativa, proyecto interno, persona o motivo especifico dentro del espacio (ej. "lonchera del colegio", "matricula de Juan", "venta de camisetas", "cliente Acme"), propon hasta 3 etiquetas cortas en minuscula y sin espacios (usa guiones: "venta-camisetas") en "suggested_tags". Son para que el usuario organice iniciativas dentro de un mismo espacio (tipico en Negocio/Proyecto) sin tener que crear categorias formales.
+- Si no hay ninguna iniciativa/subproyecto identificable, usa un arreglo vacio []. No inventes etiquetas genericas que no aporten (ej. nunca uses el mismo tipo de movimiento como etiqueta).
+
+Espacio sugerido ("suggested_space_name") — evitar friccion entre espacios:
+- Se te puede indicar el "Espacio activo" (donde el usuario esta capturando ahora) y una lista de "Otros espacios del usuario". Si el texto menciona CLARAMENTE un contexto que pertenece a otro de esos espacios (ej. esta en "Personal" pero el texto describe un gasto de "Negocio", o menciona el nombre de otro espacio explicitamente), pon el nombre EXACTO de ese otro espacio en "suggested_space_name".
+- Si el texto encaja bien con el espacio activo, o la entrada es ambigua sin una señal clara de pertenecer a otro espacio, deja "suggested_space_name" en null. No sugieras un cambio de espacio solo por duda leve — el costo de una sugerencia incorrecta (fricción, desconfianza) es mayor que el de no sugerir.
+- Solo puedes usar nombres que aparezcan literalmente en la lista de "Otros espacios del usuario" que se te de — nunca inventes un nombre de espacio.`;

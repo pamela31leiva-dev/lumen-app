@@ -51,6 +51,11 @@ export interface PendingTransactionSummary {
   createdAt: string;
   /** Pregunta breve de la IA cuando la entrada es ambigua entre dos clasificaciones plausibles; null si no aplica. */
   clarificationQuestion: string | null;
+  /** Etiquetas de subproyecto detectadas o editadas (ej. "lonchera", "matricula"). */
+  tags: string[];
+  /** Espacio donde la IA cree que este movimiento encaja mejor, si es distinto al activo. */
+  suggestedSpaceId: string | null;
+  suggestedSpaceName: string | null;
 }
 
 /** Fila del historial de movimientos confirmados (pantalla de consulta, /settings). */
@@ -62,6 +67,34 @@ export interface TransactionHistoryItem {
   currencyOriginal: string;
   categoryName: string | null;
   transactionDate: string;
+  tags: string[];
+}
+
+/** Una entrada del ranking "top categoria" del Resumen de Impacto. */
+export interface ImpactTopCategory {
+  name: string;
+  totalAmount: number;
+  transactionCount: number;
+}
+
+/**
+ * "Tu año/mes en numeros" — estructura base para la tarjeta compartible de
+ * impacto (estilo Spotify Wrapped). Calculada sobre transacciones CONFIRMADAS
+ * de un espacio en un periodo; nunca sobre pendientes.
+ */
+export interface ImpactSummary {
+  spaceName: string;
+  baseCurrency: string;
+  periodLabel: string; // ej. "Ultimos 12 meses"
+  periodStart: string; // ISO 8601
+  periodEnd: string; // ISO 8601
+  totalIncome: number;
+  totalExpense: number;
+  transactionCount: number;
+  topExpenseCategories: ImpactTopCategory[]; // top 3, mayor a menor
+  biggestExpense: { description: string | null; amount: number; date: string } | null;
+  busiestMonth: { label: string; transactionCount: number } | null;
+  activeDayCount: number; // dias distintos con al menos un movimiento confirmado
 }
 
 export type PlanTier = 'free' | 'pro' | 'premium';

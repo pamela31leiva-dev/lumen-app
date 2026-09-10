@@ -32,6 +32,7 @@ export async function confirmTransaction(payload: ConfirmTransactionDTO): Promis
       exchange_rate: payload.exchange_rate,
       description: payload.description ?? null,
       transaction_date: payload.transaction_date,
+      tags: payload.tags ?? [],
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
       confirmed_by: user.id,
@@ -127,6 +128,75 @@ export async function deleteTransaction(
 
   if (!count) {
     return { success: false, error: 'No tienes permiso para eliminar este movimiento (requiere rol Owner o Admin).' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Mueve una transaccion PENDIENTE al espacio que la IA sugirio (ver
+ * suggested_space_name en AiExtractionResult) cuando el texto claramente
+ * pertenecia a otro contexto del usuario. Solo aplica a pendientes: mover
+ * una CONFIRMADA de espacio complicaria saldos ya calculados y no es lo que
+ * pide este flujo (evitar friccion justo al capturar, no reclasificar
+ * historia). Se resetean cuenta/categoria porque pertenecen al espacio
+ * original y no tienen por que existir en el destino; el receipt (si hay)
+ * se mueve junto para que el trigger de consistencia de espacio no falle.
+ * RLS exige rol editor+ en AMBOS espacios (origen y destino).
+ */
+export async function moveTransactionToSpace(
+  transactionId: string,
+  fromSpaceId: string,
+  toSpaceId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+
+  const { data: transaction, error: fetchError } = await supabase
+    .from('transactions')
+    .select('receipt_id, status')
+    .eq('id', transactionId)
+    .eq('space_id', fromSpaceId)
+    .single();
+
+  if (fetchError || !transaction) {
+    return { success: false, error: 'No se encontro el movimiento.' };
+  }
+  if (transaction.status !== 'pending_confirmation') {
+    return { success: false, error: 'Solo se pueden mover movimientos pendientes de confirmar.' };
+  }
+
+  if (transaction.receipt_id) {
+    const { error: receiptMoveError } = await supabase
+      .from('receipts')
+      .update({ space_id: toSpaceId })
+      .eq('id', transaction.receipt_id)
+      .eq('space_id', fromSpaceId);
+    if (receiptMoveError) {
+      console.error('Error al mover el documento fuente:', receiptMoveError);
+      return { success: false, error: 'No tienes permiso para mover movimientos a ese espacio.' };
+    }
+  }
+
+  const { error, count } = await supabase
+    .from('transactions')
+    .update({ space_id: toSpaceId, account_id: null, category_id: null }, { count: 'exact' })
+    .eq('id', transactionId)
+    .eq('space_id', fromSpaceId);
+
+  if (error) {
+    console.error('Error al mover la transaccion de espacio:', error);
+    return { success: false, error: 'No se pudo mover el movimiento a ese espacio.' };
+  }
+  if (!count) {
+    return { success: false, error: 'No tienes permiso para mover movimientos a ese espacio.' };
   }
 
   return { success: true };

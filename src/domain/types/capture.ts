@@ -49,6 +49,18 @@ export interface AiExtractionResult {
    * distintos). null cuando no hace falta preguntar nada.
    */
   clarification_question: string | null;
+  /**
+   * Etiquetas cortas de subproyecto/iniciativa detectadas en el texto (ej.
+   * "lonchera", "matricula", "venta-camisetas") para espacios como Negocio o
+   * Proyecto donde se manejan varias iniciativas a la vez. [] si ninguna aplica.
+   */
+  suggested_tags: string[];
+  /**
+   * Nombre EXACTO de otro espacio del usuario (de los que se le paso como
+   * contexto) cuando el texto claramente pertenece a ese contexto en vez de
+   * al espacio activo. null si no hay espacio mas adecuado que el activo.
+   */
+  suggested_space_name: string | null;
 }
 
 /** Payload para iniciar una captura (texto libre, transcripcion de voz, o documento ya subido a Storage). */
@@ -89,6 +101,7 @@ export interface ConfirmTransactionDTO {
   description?: string | null;
   transaction_date: string; // ISO 8601
   receipt_id?: string | null;
+  tags?: string[];
 }
 
 export type ConfirmTransactionResult =

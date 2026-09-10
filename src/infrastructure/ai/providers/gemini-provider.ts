@@ -16,6 +16,8 @@ const RESPONSE_SCHEMA = {
     confidence_score: { type: SchemaType.NUMBER },
     uncertainties: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     clarification_question: { type: SchemaType.STRING, nullable: true },
+    suggested_tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    suggested_space_name: { type: SchemaType.STRING, nullable: true },
   },
   required: [
     'amount_original',
@@ -27,6 +29,8 @@ const RESPONSE_SCHEMA = {
     'confidence_score',
     'uncertainties',
     'clarification_question',
+    'suggested_tags',
+    'suggested_space_name',
   ],
 };
 
@@ -40,6 +44,8 @@ interface GeminiExtractionSchema {
   confidence_score: number;
   uncertainties: string[];
   clarification_question: string | null;
+  suggested_tags: string[];
+  suggested_space_name: string | null;
 }
 
 /**
@@ -81,6 +87,12 @@ export class GeminiExtractionProvider implements AiExtractionPort {
 
     const parts: Part[] = [];
     const instructionLines = [`Moneda base del espacio: ${input.baseCurrency}.`];
+    if (input.activeSpaceName) {
+      instructionLines.push(`Espacio activo: ${input.activeSpaceName}.`);
+    }
+    if (input.otherSpaceNames && input.otherSpaceNames.length > 0) {
+      instructionLines.push(`Otros espacios del usuario: ${input.otherSpaceNames.join(', ')}.`);
+    }
     if (input.learnedHints && input.learnedHints.length > 0) {
       instructionLines.push('Aprendizajes previos de este espacio (aplica el mismo criterio, no vuelvas a preguntar):');
       instructionLines.push(...input.learnedHints.map((hint) => `- ${hint}`));
@@ -118,6 +130,8 @@ export class GeminiExtractionProvider implements AiExtractionPort {
       confidence_score: Math.min(1, Math.max(0, parsed.confidence_score)),
       uncertainties: parsed.uncertainties,
       clarification_question: parsed.clarification_question,
+      suggested_tags: parsed.suggested_tags,
+      suggested_space_name: parsed.suggested_space_name,
     };
   }
 
