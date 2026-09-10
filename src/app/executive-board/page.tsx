@@ -59,7 +59,12 @@ export default async function ExecutiveBoardPage() {
     <main className="min-h-screen bg-obsidian text-stone-100">
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="executive-board" />
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 pb-40">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
+        {/* c) Consola de Comando Directa: arriba y sticky — lo primero que
+            se ve, siempre alcanzable, sin depender de scroll ni de que el
+            teclado virtual no tape un input fijo abajo. */}
+        <CommandConsole spaceId={activeSpace.id} />
+
         {/* a) Hero de Patrimonio y Proyeccion */}
         <NetWorthHero baseCurrency={balances.baseCurrency} totalBalance={totalBalance} />
 
@@ -86,9 +91,6 @@ export default async function ExecutiveBoardPage() {
             <BalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
           </div>
         </details>
-
-        {/* c) Consola de Comando Directa */}
-        <CommandConsole spaceId={activeSpace.id} />
       </div>
     </main>
   );

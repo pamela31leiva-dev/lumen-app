@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { processIncomingCapture } from '@/actions/capture';
@@ -23,20 +23,55 @@ function sourceForMimeType(mimeType: string): AiCaptureSource {
   return mimeType.startsWith('image/') ? 'ai_photo' : 'ai_document';
 }
 
+// El Web Speech API no tiene tipos oficiales en lib.dom.d.ts y
+// webkitSpeechRecognition no existe en absoluto ahi; se declara aqui el
+// subconjunto minimo que se usa, en vez de tipar todo el API.
+interface MinimalSpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start(): void;
+  stop(): void;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+
+function getSpeechRecognitionCtor(): (new () => MinimalSpeechRecognition) | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => MinimalSpeechRecognition;
+    webkitSpeechRecognition?: new () => MinimalSpeechRecognition;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
 /**
  * Bloque (c) del Executive Action Board: la Consola de Comando Directa.
- * Una sola franja fija y compacta (no una tarjeta alta) siempre alcanzable —
- * escribir y presionar Enter (o Registrar) debe sentirse tan rapido como
- * mandar un mensaje de texto.
- * Nota: solo texto y foto/documento estan implementados; la entrada por voz
- * es una aspiracion del producto, no un boton que aparente funcionar sin hacerlo.
+ * Vive arriba (sticky, justo debajo del encabezado) en vez de fija abajo:
+ * un input fijo al fondo en movil queda tapado o mal posicionado cuando se
+ * abre el teclado virtual justo al escribir — el momento en que mas se
+ * necesita verla. Arriba evita ese problema por completo y ademas es
+ * literalmente lo primero que se ve al entrar, sin buscar ni hacer scroll.
+ * Escribir/dictar y presionar Enter (o Registrar) debe sentirse tan rapido
+ * como mandar un mensaje de texto.
  */
 export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const router = useRouter();
   const [text, setText] = useState('');
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
+
+  useEffect(() => {
+    setSpeechSupported(getSpeechRecognitionCtor() !== null);
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   function submitText() {
     const trimmed = text.trim();
@@ -99,10 +134,44 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     });
   }
 
+  function toggleListening() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+
+    const recognition = new Ctor();
+    recognition.lang = 'es-CO';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? '')
+        .join(' ');
+      setText(transcript);
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      setFeedback({ kind: 'error', message: 'No se pudo escuchar el microfono. Intenta de nuevo o escribe.' });
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    setFeedback(null);
+    setIsListening(true);
+    recognition.start();
+  }
+
   return (
     <section
       id="quick-capture"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-elevated/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur transition-colors hover:border-gold/15 sm:inset-x-6 sm:bottom-4 sm:mx-auto sm:max-w-5xl sm:rounded-xl sm:border sm:px-5 sm:py-3"
+      className="sticky top-4 z-20 rounded-xl border border-white/10 bg-elevated/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur transition-colors hover:border-gold/15 sm:px-5"
     >
       <div className="flex items-center gap-2">
         <button
@@ -134,12 +203,33 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
           }}
         />
 
+        {speechSupported && (
+          <button
+            type="button"
+            onClick={toggleListening}
+            disabled={isPending}
+            title={isListening ? 'Detener dictado' : 'Dictar por voz'}
+            aria-label={isListening ? 'Detener dictado' : 'Dictar por voz'}
+            className={cn(
+              'flex shrink-0 items-center justify-center rounded-lg border p-2.5 transition disabled:opacity-50',
+              isListening
+                ? 'animate-pulse border-red-500/40 text-red-400'
+                : 'border-white/10 text-stone-400 hover:border-gold/30 hover:text-gold',
+            )}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+              <rect x="9" y="2" width="6" height="12" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 11a7 7 0 0 0 14 0M12 18v4" />
+            </svg>
+          </button>
+        )}
+
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isPending}
-          placeholder="Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo"
+          placeholder={isListening ? 'Escuchando...' : 'Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo'}
           className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
         />
 
