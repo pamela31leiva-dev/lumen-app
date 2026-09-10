@@ -10,6 +10,8 @@ import type {
   PendingTransactionSummary,
   SpaceSummary,
   SpaceType,
+  SubscriptionSummary,
+  TransactionHistoryItem,
 } from '@/domain/types/dashboard';
 
 interface SpaceMembershipRow {
@@ -168,7 +170,79 @@ export async function getPendingTransactions(spaceId: string): Promise<PendingTr
     transactionDate: row.transaction_date,
     receiptId: row.receipt_id,
     createdAt: row.created_at,
+    clarificationQuestion:
+      (row.ai_raw_interpretation as { clarification_question?: string | null } | null)?.clarification_question ?? null,
   }));
+}
+
+/**
+ * Historial de movimientos CONFIRMADOS (pantalla de consulta en /settings,
+ * no el tablero principal — Cero Ruido). Limitado a los ultimos 50: es una
+ * bandeja de revision/borrado puntual, no un libro contable completo.
+ */
+export async function getTransactionHistory(spaceId: string, limit = 50): Promise<TransactionHistoryItem[]> {
+  const supabase = await getSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('id, type, description, amount_original, currency_original, transaction_date, category:categories(name)')
+    .eq('space_id', spaceId)
+    .eq('status', 'confirmed')
+    .order('transaction_date', { ascending: false })
+    .limit(limit)
+    .returns<
+      {
+        id: string;
+        type: TransactionHistoryItem['type'];
+        description: string | null;
+        amount_original: number;
+        currency_original: string;
+        transaction_date: string;
+        category: { name: string } | null;
+      }[]
+    >();
+
+  if (error || !data) {
+    console.error('Error al leer el historial de movimientos:', error);
+    return [];
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    type: row.type,
+    description: row.description,
+    amountOriginal: Number(row.amount_original),
+    currencyOriginal: row.currency_original,
+    categoryName: row.category?.name ?? null,
+    transactionDate: row.transaction_date,
+  }));
+}
+
+/** Plan del usuario autenticado. Sin fila (usuarios previos al 0008 no respaldados) = Gratis/activo por default. */
+export async function getMySubscription(): Promise<SubscriptionSummary> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const fallback: SubscriptionSummary = { plan: 'free', status: 'active', maxSpaces: null, maxMonthlyRecords: null, maxStorageMb: null };
+  if (!user) return fallback;
+
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('plan, status, max_spaces, max_monthly_records, max_storage_mb')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!data) return fallback;
+
+  return {
+    plan: data.plan,
+    status: data.status,
+    maxSpaces: data.max_spaces,
+    maxMonthlyRecords: data.max_monthly_records,
+    maxStorageMb: data.max_storage_mb,
+  };
 }
 
 /** Categorias visibles para el espacio: globales del sistema (space_id null) + propias. */

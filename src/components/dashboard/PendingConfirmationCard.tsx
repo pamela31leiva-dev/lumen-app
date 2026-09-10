@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmTransaction, rejectPendingTransaction } from '@/actions/confirm';
 import { getReceiptSignedUrl } from '@/actions/dashboard';
+import { saveClassificationHint } from '@/actions/classification';
 import type { TransactionType } from '@/domain/types/capture';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,8 @@ export function PendingConfirmationCard({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [clarificationAnswered, setClarificationAnswered] = useState(false);
+  const [clarificationAnswer, setClarificationAnswer] = useState('');
 
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [accountId, setAccountId] = useState(transaction.accountId ?? '');
@@ -102,6 +105,30 @@ export function PendingConfirmationCard({
     });
   }
 
+  function handleSaveClarification() {
+    if (!transaction.clarificationQuestion) return;
+    const trimmed = clarificationAnswer.trim();
+    if (!trimmed) {
+      setError('Escribe una respuesta breve.');
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await saveClassificationHint({
+        space_id: spaceId,
+        transaction_id: transaction.id,
+        question: transaction.clarificationQuestion!,
+        answer: trimmed,
+      });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setDescription((current) => (current ? `${current} — ${trimmed}` : trimmed));
+      setClarificationAnswered(true);
+    });
+  }
+
   function handleViewDocument() {
     const receiptId = transaction.receiptId;
     if (!receiptId) return;
@@ -137,6 +164,38 @@ export function PendingConfirmationCard({
           </span>
         )}
       </div>
+
+      {transaction.clarificationQuestion && !clarificationAnswered && (
+        <div className="mt-3 rounded-lg border border-gold/30 bg-gold/10 p-3">
+          <p className="text-sm text-stone-100">🤔 {transaction.clarificationQuestion}</p>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={clarificationAnswer}
+              onChange={(e) => setClarificationAnswer(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveClarification();
+                }
+              }}
+              placeholder="Responde en pocas palabras..."
+              disabled={isPending}
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+            />
+            <button
+              type="button"
+              onClick={handleSaveClarification}
+              disabled={isPending || !clarificationAnswer.trim()}
+              className="shrink-0 rounded-lg bg-gold/90 px-3 py-2 text-sm font-medium text-obsidian transition hover:bg-gold disabled:opacity-50"
+            >
+              Guardar
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-stone-500">
+            La proxima vez que registres algo parecido, Lumen ya sabra clasificarlo asi.
+          </p>
+        </div>
+      )}
 
       {transaction.uncertainties.length > 0 && (
         <p className="mt-2 text-xs text-gold">

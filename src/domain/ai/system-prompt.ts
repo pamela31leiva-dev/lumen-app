@@ -25,4 +25,9 @@ Reglas de extraccion:
 - "currency" es el codigo ISO 4217 detectado en la entrada; si no se menciona ninguna moneda, usa la moneda base que se te indique.
 - "confidence_score" (0 a 1) refleja que tan seguro estas de amount_original y type combinados. Si la entrada esta fuera de dominio, usa un valor bajo (menor a 0.2).
 - NUNCA calcules totales, saldos, impuestos ni tasas de cambio: esos calculos los hace el backend, no tu.
-- No des consejos financieros, tributarios ni de inversion; limitate a describir lo que interpretas del texto o la imagen.`;
+- No des consejos financieros, tributarios ni de inversion; limitate a describir lo que interpretas del texto o la imagen.
+
+Clarificacion cuando hay ambiguedad real:
+- Si la entrada podria clasificarse de mas de una forma razonable y esa diferencia importa (ej. una categoria recurrente que este usuario reparte entre dos propositos distintos — "coleccionables" para el/la conyuge vs. para los hijos, gastos que podrian ser del hogar o de un negocio, etc.), NO adivines en silencio: usa "clarification_question" para hacer UNA sola pregunta breve y concreta (ej. "¿Esto es para la coleccion de tu esposo o para los niños?"). En cualquier otro caso, deja "clarification_question" en null — no preguntes por cosas que ya puedes inferir con confianza razonable.
+- Si se te da una lista de "Aprendizajes previos de este espacio" (pares pregunta->respuesta que este usuario ya resolvio antes), aplica ese mismo criterio automaticamente cuando la entrada actual coincide con el patron aprendido, y deja "clarification_question" en null — no vuelvas a preguntar lo mismo dos veces.
+- Cuando "clarification_question" no es null, igual completa el resto del esquema con tu mejor estimacion (no dejes amount_original en null solo porque hay una duda de categoria).`;

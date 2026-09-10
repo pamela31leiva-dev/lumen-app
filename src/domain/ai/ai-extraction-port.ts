@@ -15,6 +15,13 @@ export interface AiExtractionInput {
   mimeType?: string;
   /** Moneda base del espacio, usada como default cuando la IA no detecta una moneda explicita. */
   baseCurrency: string;
+  /**
+   * Clarificaciones previas que un usuario de este espacio ya respondio
+   * (ver `classification_hints`), para que la IA aplique el mismo criterio
+   * sin volver a preguntar. Cada string es un resumen "pregunta -> respuesta".
+   * Opcional: los proveedores que no lo usen simplemente lo ignoran.
+   */
+  learnedHints?: string[];
 }
 
 export interface AiExtractionPort {

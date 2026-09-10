@@ -15,6 +15,7 @@ const RESPONSE_SCHEMA = {
     category_suggestion: { type: SchemaType.STRING, nullable: true },
     confidence_score: { type: SchemaType.NUMBER },
     uncertainties: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    clarification_question: { type: SchemaType.STRING, nullable: true },
   },
   required: [
     'amount_original',
@@ -25,6 +26,7 @@ const RESPONSE_SCHEMA = {
     'category_suggestion',
     'confidence_score',
     'uncertainties',
+    'clarification_question',
   ],
 };
 
@@ -37,6 +39,7 @@ interface GeminiExtractionSchema {
   category_suggestion: string | null;
   confidence_score: number;
   uncertainties: string[];
+  clarification_question: string | null;
 }
 
 /**
@@ -78,6 +81,10 @@ export class GeminiExtractionProvider implements AiExtractionPort {
 
     const parts: Part[] = [];
     const instructionLines = [`Moneda base del espacio: ${input.baseCurrency}.`];
+    if (input.learnedHints && input.learnedHints.length > 0) {
+      instructionLines.push('Aprendizajes previos de este espacio (aplica el mismo criterio, no vuelvas a preguntar):');
+      instructionLines.push(...input.learnedHints.map((hint) => `- ${hint}`));
+    }
     if (input.text) instructionLines.push(`Texto o transcripcion del usuario:\n"""${input.text}"""`);
     if (input.storagePath && !input.text) {
       instructionLines.push('El usuario adjunto un documento; interpretalo a partir de la imagen incluida.');
@@ -110,6 +117,7 @@ export class GeminiExtractionProvider implements AiExtractionPort {
       transaction_date: null,
       confidence_score: Math.min(1, Math.max(0, parsed.confidence_score)),
       uncertainties: parsed.uncertainties,
+      clarification_question: parsed.clarification_question,
     };
   }
 

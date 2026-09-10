@@ -34,6 +34,14 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
     return { success: false, error: 'No tienes acceso a este espacio' };
   }
 
+  const { data: hintRows } = await supabase
+    .from('classification_hints')
+    .select('question, answer')
+    .eq('space_id', payload.space_id)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  const learnedHints = (hintRows ?? []).map((h) => `${h.question} -> ${h.answer}`);
+
   let extraction;
   try {
     const ai = getAiExtractionAdapter();
@@ -43,6 +51,7 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       storagePath: payload.storage_path,
       mimeType: payload.mime_type,
       baseCurrency: space.base_currency,
+      learnedHints,
     });
   } catch (err) {
     await reportError({

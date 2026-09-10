@@ -111,6 +111,9 @@ export class OpenAiExtractionProvider implements AiExtractionPort {
       transaction_date: null,
       confidence_score: Math.min(1, Math.max(0, parsed.confidence_score)),
       uncertainties: parsed.uncertainties,
+      // Motor de pago sin uso activo en modo $0; la clarificacion
+      // interactiva solo esta implementada en GeminiExtractionProvider.
+      clarification_question: null,
     };
   }
 }

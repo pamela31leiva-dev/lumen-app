@@ -33,6 +33,7 @@ export class MockAiExtractionProvider implements AiExtractionPort {
       transaction_date: null,
       confidence_score: amount !== null ? 0.6 : 0.2,
       uncertainties,
+      clarification_question: null,
     };
   }
 }

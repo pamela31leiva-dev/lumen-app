@@ -49,6 +49,31 @@ export interface PendingTransactionSummary {
   transactionDate: string;
   receiptId: string | null;
   createdAt: string;
+  /** Pregunta breve de la IA cuando la entrada es ambigua entre dos clasificaciones plausibles; null si no aplica. */
+  clarificationQuestion: string | null;
+}
+
+/** Fila del historial de movimientos confirmados (pantalla de consulta, /settings). */
+export interface TransactionHistoryItem {
+  id: string;
+  type: TransactionType;
+  description: string | null;
+  amountOriginal: number;
+  currencyOriginal: string;
+  categoryName: string | null;
+  transactionDate: string;
+}
+
+export type PlanTier = 'free' | 'pro' | 'premium';
+export type SubscriptionStatus = 'active' | 'inactive' | 'canceled';
+
+/** Plan del usuario. Se activa manualmente (sin cobro real todavia); ver 0008_subscriptions.sql. */
+export interface SubscriptionSummary {
+  plan: PlanTier;
+  status: SubscriptionStatus;
+  maxSpaces: number | null;
+  maxMonthlyRecords: number | null;
+  maxStorageMb: number | null;
 }
 
 export interface CategoryOption {

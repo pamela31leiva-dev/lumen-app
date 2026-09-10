@@ -1,4 +1,4 @@
-import { getAccountBalances } from '@/actions/dashboard';
+import { getAccountBalances, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
 import { getSpaceMembers } from '@/actions/settings';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -6,7 +6,9 @@ import { RenameSpaceForm } from '@/components/dashboard/RenameSpaceForm';
 import { CreateSpaceDialog } from '@/components/dashboard/CreateSpaceDialog';
 import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SessionPreferenceInfo } from '@/components/dashboard/SessionPreferenceInfo';
+import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
 import { AppFooter } from '@/components/AppFooter';
+import type { PlanTier } from '@/domain/types/dashboard';
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
 
@@ -17,12 +19,20 @@ const ROLE_LABEL: Record<string, string> = {
   viewer: 'Solo lectura',
 };
 
+const PLAN_LABEL: Record<PlanTier, string> = {
+  free: 'Gratuito',
+  pro: 'Pro',
+  premium: 'Premium',
+};
+
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances] = await Promise.all([
+  const [members, balances, transactionHistory, subscription] = await Promise.all([
     getSpaceMembers(activeSpace.id),
     getAccountBalances(activeSpace.id),
+    getTransactionHistory(activeSpace.id),
+    getMySubscription(),
   ]);
 
   const canEditSpace = activeSpace.role === 'owner' || activeSpace.role === 'admin';
@@ -73,6 +83,27 @@ export default async function SettingsPage() {
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Cuentas</h2>
           <BalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-stone-200">Historial de movimientos</h2>
+            <span className="text-xs text-stone-500">Ultimos {transactionHistory.length}</span>
+          </div>
+          <div className="mt-3">
+            <TransactionHistoryList spaceId={activeSpace.id} items={transactionHistory} canDelete={canEditSpace} />
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-2 text-sm font-medium text-stone-200">Plan</h2>
+          <p className="text-sm text-stone-300">
+            {PLAN_LABEL[subscription.plan]}
+            {subscription.status !== 'active' && <span className="ml-2 text-xs text-stone-500">({subscription.status})</span>}
+          </p>
+          <p className="mt-1 text-xs text-stone-500">
+            Tu historico y espacios se conservan intactos aunque tu plan cambie o quede inactivo.
+          </p>
         </section>
 
         {SUPPORT_EMAIL && (

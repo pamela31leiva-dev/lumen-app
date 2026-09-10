@@ -90,3 +90,44 @@ export async function rejectPendingTransaction(
 
   return { success: true };
 }
+
+/**
+ * Elimina definitivamente un registro (gasto, ingreso o transferencia) del
+ * historial. A diferencia de rejectPendingTransaction (que descarta una
+ * propuesta de IA sin confirmar), esto borra una fila real -- confirmada o
+ * no. La fila SI queda en audit_logs (trigger trg_transactions_audit, ver
+ * 0001_init_schema.sql) para trazabilidad, aunque desaparezca del historial
+ * visible. Solo owner/admin pueden hacerlo (policy transactions_delete_admin);
+ * un editor recibira un error de permisos aqui mismo, RLS lo hace cumplir.
+ */
+export async function deleteTransaction(
+  transactionId: string,
+  spaceId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+
+  const { error, count } = await supabase
+    .from('transactions')
+    .delete({ count: 'exact' })
+    .eq('id', transactionId)
+    .eq('space_id', spaceId);
+
+  if (error) {
+    console.error('Error al eliminar la transaccion:', error);
+    return { success: false, error: 'No se pudo eliminar el movimiento.' };
+  }
+
+  if (!count) {
+    return { success: false, error: 'No tienes permiso para eliminar este movimiento (requiere rol Owner o Admin).' };
+  }
+
+  return { success: true };
+}

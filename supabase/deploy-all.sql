@@ -765,4 +765,98 @@ alter table public.system_logs add column if not exists stack text;
 alter table public.system_logs add column if not exists digest text;
 alter table public.system_logs add column if not exists context jsonb;
 
+-- 0007: clarificacion interactiva de la IA (aprendizajes por espacio) ---------
+create table if not exists public.classification_hints (
+    id          uuid primary key default gen_random_uuid(),
+    space_id    uuid not null references public.spaces(id) on delete cascade,
+    question    text not null,
+    answer      text not null,
+    created_by  uuid not null references public.profiles(id),
+    created_at  timestamptz not null default now()
+);
+
+comment on table public.classification_hints is 'Aprendizajes de clarificaciones pregunta->respuesta por espacio. Se inyectan como contexto en el prompt de extraccion para que la IA aplique el mismo criterio sin repreguntar.';
+
+create index if not exists idx_classification_hints_space on public.classification_hints (space_id, created_at desc);
+
+alter table public.classification_hints enable row level security;
+
+drop policy if exists classification_hints_select_member on public.classification_hints;
+create policy classification_hints_select_member on public.classification_hints
+    for select using (public.is_space_member(space_id));
+
+drop policy if exists classification_hints_insert_editor on public.classification_hints;
+create policy classification_hints_insert_editor on public.classification_hints
+    for insert with check (public.has_space_role(space_id, array['owner','admin','editor']::member_role[]));
+
+drop policy if exists classification_hints_delete_admin on public.classification_hints;
+create policy classification_hints_delete_admin on public.classification_hints
+    for delete using (public.has_space_role(space_id, array['owner','admin']::member_role[]));
+
+-- 0008: modelo de datos de planes Gratis/Pro/Premium (sin cobro real) ---------
+create table if not exists public.subscriptions (
+    id                   uuid primary key default gen_random_uuid(),
+    user_id              uuid not null unique references public.profiles(id) on delete cascade,
+    plan                 text not null default 'free' check (plan in ('free', 'pro', 'premium')),
+    status               text not null default 'active' check (status in ('active', 'inactive', 'canceled')),
+    max_spaces           integer,
+    max_monthly_records  integer,
+    max_storage_mb       integer,
+    activated_by         uuid references public.profiles(id),
+    notes                text,
+    started_at           timestamptz not null default now(),
+    updated_at           timestamptz not null default now()
+);
+
+comment on table public.subscriptions is 'Plan Gratis/Pro/Premium por usuario. GARANTIA DE RETENCION: cambiar status a inactive/canceled NUNCA borra ni oculta datos historicos. Limites max_* en NULL hasta definir numeros concretos.';
+
+create index if not exists idx_subscriptions_user on public.subscriptions (user_id);
+
+drop trigger if exists trg_subscriptions_updated_at on public.subscriptions;
+create trigger trg_subscriptions_updated_at before update on public.subscriptions
+    for each row execute function public.set_updated_at();
+
+alter table public.subscriptions enable row level security;
+
+drop policy if exists subscriptions_select_own on public.subscriptions;
+create policy subscriptions_select_own on public.subscriptions
+    for select using (user_id = auth.uid());
+
+insert into public.subscriptions (user_id, plan, status)
+select id, 'free', 'active' from public.profiles
+on conflict (user_id) do nothing;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_full_name text;
+begin
+    v_full_name := new.raw_user_meta_data ->> 'full_name';
+
+    insert into public.profiles (id, email, full_name, privacy_consent_at, terms_accepted_at)
+    values (new.id, new.email, v_full_name, now(), now())
+    on conflict (id) do nothing;
+
+    insert into public.spaces (name, type, base_currency, owner_id)
+    values ('Espacio Personal', 'personal', 'COP', new.id);
+
+    insert into public.subscriptions (user_id, plan, status)
+    values (new.id, 'free', 'active')
+    on conflict (user_id) do nothing;
+
+    return new;
+end;
+$$;
+
+-- 0009: alinear system_logs con columnas agregadas fuera de las migraciones
+-- (level NOT NULL sin default hacia fallar reportError() en silencio) -------
+alter table public.system_logs add column if not exists level text not null default 'error';
+alter table public.system_logs alter column level set default 'error';
+alter table public.system_logs add column if not exists user_id uuid references public.profiles(id) on delete set null;
+alter table public.system_logs add column if not exists space_id uuid references public.spaces(id) on delete set null;
+
 commit;

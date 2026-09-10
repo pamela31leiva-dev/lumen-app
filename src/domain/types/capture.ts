@@ -42,6 +42,13 @@ export interface AiExtractionResult {
   confidence_score: number;
   /** Campos que la IA no pudo determinar con certeza y requieren revision humana. */
   uncertainties: string[];
+  /**
+   * Pregunta corta para el usuario cuando la entrada es genuinamente
+   * ambigua entre dos clasificaciones plausibles (ej. una categoria
+   * recurrente que historicamente se ha dividido entre dos propositos
+   * distintos). null cuando no hace falta preguntar nada.
+   */
+  clarification_question: string | null;
 }
 
 /** Payload para iniciar una captura (texto libre, transcripcion de voz, o documento ya subido a Storage). */

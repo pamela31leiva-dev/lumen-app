@@ -37,6 +37,10 @@ export async function reportError(report: ErrorReport): Promise<void> {
       stack: report.stack ?? null,
       digest: report.digest ?? null,
       context: { ...report.context, url: report.url },
+      // La tabla en produccion tiene "level" NOT NULL (agregada manualmente
+      // en algun momento, fuera de las migraciones versionadas) — sin esto
+      // el insert fallaba en silencio y system_logs quedaba vacia.
+      level: 'error',
     });
 
     if (error) {
