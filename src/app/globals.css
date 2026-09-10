@@ -7,6 +7,22 @@
   --foreground: #f5f5f4;
 }
 
+/* Contencion final anti-desborde horizontal: sin esto, un solo elemento
+   descuidado en cualquier pantalla (una fila mal medida, un panel flotante
+   nuevo que alguien agregue despues) puede volver arrastrable toda la
+   interfaz de lado a lado en movil. html+body cortan cualquier desborde
+   residual a nivel de pagina; overscroll-behavior-x apaga el rebote
+   elastico horizontal de iOS/Android (el vertical se deja intacto, es
+   comportamiento nativo esperado). Los overflow-x-auto puntuales (ej. la
+   tabla de BulkImportModal) siguen funcionando igual: son scroll interno de
+   un contenedor, no de la pagina. */
+html,
+body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  max-width: 100vw;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
