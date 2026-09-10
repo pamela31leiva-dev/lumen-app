@@ -6,9 +6,10 @@
 
 /**
  * El boton "Continuar con Google" esta implementado (GoogleSignInButton +
- * /auth/callback) pero requiere habilitar el proveedor Google en el
+ * /auth/callback). Requiere que el proveedor Google este habilitado en el
  * dashboard de Supabase (Authentication > Providers) con credenciales de
- * Google Cloud. Mientras eso no este configurado, se oculta para no mostrar
- * un boton que fallaria al hacer clic.
+ * Google Cloud — ver instrucciones en ese panel. Si se apaga aqui antes de
+ * completar ese paso, el boton no aparece (evita un boton que falle al
+ * hacer clic).
  */
-export const GOOGLE_AUTH_ENABLED = false;
+export const GOOGLE_AUTH_ENABLED = true;
