@@ -5,6 +5,8 @@ declare global {
     interface ProcessEnv {
       NEXT_PUBLIC_SUPABASE_URL: string;
       NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+      /** URL canonica de produccion (sin slash final), ej. https://lumen-app-lime.vercel.app. Si falta, el OAuth de Google usa window.location.origin (sirve para desarrollo local). */
+      NEXT_PUBLIC_SITE_URL?: string;
       /** Solo para scripts de servidor/administracion, y para src/lib/telemetry/reporter.ts (logs de sistema). Nunca se lee desde codigo que corra en el navegador. */
       SUPABASE_SERVICE_ROLE_KEY?: string;
       /** Selecciona el proveedor detras de infrastructure/ai/adapter.ts. 'gemini' es el modo $0 (nivel gratuito). Default: 'mock'. */

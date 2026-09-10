@@ -9,6 +9,14 @@ import { cn } from '@/lib/utils';
  * Supabase (Authentication > Providers) con credenciales de Google Cloud —
  * configuracion externa que el usuario debe hacer una sola vez; el codigo
  * ya esta listo para cuando eso este activo.
+ *
+ * El destino del redirect usa NEXT_PUBLIC_SITE_URL cuando esta configurada
+ * (produccion) en vez de depender solo de window.location.origin, para que
+ * el valor sea explicito y no dependa de deteccion en tiempo de ejecucion.
+ * Si Supabase igual redirige a localhost en produccion, el problema esta en
+ * Authentication > URL Configuration > Site URL / Redirect URLs del panel
+ * de Supabase, no en este codigo: ese panel valida el redirectTo contra una
+ * lista blanca y cae de vuelta a su "Site URL" si la URL no esta permitida.
  */
 export function GoogleSignInButton() {
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -18,9 +26,10 @@ export function GoogleSignInButton() {
     setError(null);
     setIsRedirecting(true);
     const supabase = getSupabaseBrowserClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${siteUrl}/auth/callback` },
     });
     if (oauthError) {
       setIsRedirecting(false);
