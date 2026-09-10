@@ -16,6 +16,7 @@ const RESPONSE_SCHEMA = {
     confidence_score: { type: SchemaType.NUMBER },
     uncertainties: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     clarification_question: { type: SchemaType.STRING, nullable: true },
+    clarification_options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     suggested_tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     suggested_space_name: { type: SchemaType.STRING, nullable: true },
   },
@@ -29,6 +30,7 @@ const RESPONSE_SCHEMA = {
     'confidence_score',
     'uncertainties',
     'clarification_question',
+    'clarification_options',
     'suggested_tags',
     'suggested_space_name',
   ],
@@ -44,6 +46,7 @@ interface GeminiExtractionSchema {
   confidence_score: number;
   uncertainties: string[];
   clarification_question: string | null;
+  clarification_options: string[];
   suggested_tags: string[];
   suggested_space_name: string | null;
 }
@@ -130,6 +133,7 @@ export class GeminiExtractionProvider implements AiExtractionPort {
       confidence_score: Math.min(1, Math.max(0, parsed.confidence_score)),
       uncertainties: parsed.uncertainties,
       clarification_question: parsed.clarification_question,
+      clarification_options: parsed.clarification_options ?? [],
       suggested_tags: parsed.suggested_tags,
       suggested_space_name: parsed.suggested_space_name,
     };
@@ -140,21 +144,48 @@ export class GeminiExtractionProvider implements AiExtractionPort {
    * frecuencia visible en produccion — no es un error del usuario ni del
    * codigo. Reintenta hasta 2 veces con backoff corto antes de propagar,
    * para que una sola captura no falle por un pico transitorio de Google.
+   *
+   * Cada intento tiene un timeout duro (ATTEMPT_TIMEOUT_MS): el SDK no
+   * configura un timeout propio en su fetch interno, asi que sin esto una
+   * conexion colgada del lado de Google podia dejar la captura "cargando"
+   * indefinidamente — el boton de Registrar nunca se destrababa porque la
+   * Server Action nunca resolvia. Con el timeout, un intento colgado falla
+   * limpio, sigue al siguiente intento (o al mensaje de error final) en vez
+   * de congelar la interfaz.
    */
   private async generateWithRetry(
     model: ReturnType<GoogleGenerativeAI['getGenerativeModel']>,
     parts: Part[],
   ): ReturnType<typeof model.generateContent> {
     const maxAttempts = 3;
+    const ATTEMPT_TIMEOUT_MS = 20_000;
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        return await model.generateContent(parts);
+        return await this.withTimeout(model.generateContent(parts), ATTEMPT_TIMEOUT_MS);
       } catch (error) {
-        const is503 = error instanceof Error && /503|overloaded|high demand/i.test(error.message);
-        if (!is503 || attempt === maxAttempts) throw error;
+        const message = error instanceof Error ? error.message : String(error);
+        const isRetryable = /503|overloaded|high demand|timed out/i.test(message);
+        if (!isRetryable || attempt === maxAttempts) throw error;
         await new Promise((resolve) => setTimeout(resolve, attempt * 800));
       }
     }
     throw new Error('Gemini no respondio tras varios intentos.');
+  }
+
+  private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`Gemini timed out tras ${ms}ms sin responder.`)), ms);
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
   }
 }

@@ -50,6 +50,12 @@ export interface AiExtractionResult {
    */
   clarification_question: string | null;
   /**
+   * Opciones de una sola palabra/frase corta para responder
+   * "clarification_question" con un toque, sin escribir (ej. ["Gasto",
+   * "Ingreso"]). [] significa que la pregunta se responde en texto libre.
+   */
+  clarification_options: string[];
+  /**
    * Etiquetas cortas de subproyecto/iniciativa detectadas en el texto (ej.
    * "lonchera", "matricula", "venta-camisetas") para espacios como Negocio o
    * Proyecto donde se manejan varias iniciativas a la vez. [] si ninguna aplica.

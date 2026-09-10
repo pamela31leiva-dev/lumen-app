@@ -111,28 +111,42 @@ export function PendingConfirmationCard({
     });
   }
 
-  function handleSaveClarification() {
+  function saveClarificationAnswer(answer: string, appendToDescription: boolean) {
     if (!transaction.clarificationQuestion) return;
-    const trimmed = clarificationAnswer.trim();
-    if (!trimmed) {
-      setError('Escribe una respuesta breve.');
-      return;
-    }
     setError(null);
     startTransition(async () => {
       const result = await saveClassificationHint({
         space_id: spaceId,
         transaction_id: transaction.id,
         question: transaction.clarificationQuestion!,
-        answer: trimmed,
+        answer,
       });
       if (!result.success) {
         setError(result.error);
         return;
       }
-      setDescription((current) => (current ? `${current} — ${trimmed}` : trimmed));
+      if (appendToDescription) {
+        setDescription((current) => (current ? `${current} — ${answer}` : answer));
+      }
       setClarificationAnswered(true);
     });
+  }
+
+  function handleSaveClarification() {
+    const trimmed = clarificationAnswer.trim();
+    if (!trimmed) {
+      setError('Escribe una respuesta breve.');
+      return;
+    }
+    saveClarificationAnswer(trimmed, true);
+  }
+
+  /** Botones de un toque (ej. "Gasto"/"Ingreso") en vez de texto libre. */
+  function handleTapClarificationOption(option: string) {
+    const normalized = option.trim().toLowerCase();
+    if (normalized === 'gasto') setType('expense');
+    else if (normalized === 'ingreso') setType('income');
+    saveClarificationAnswer(option, false);
   }
 
   function handleMoveToSuggestedSpace() {
@@ -214,29 +228,47 @@ export function PendingConfirmationCard({
       {transaction.clarificationQuestion && !clarificationAnswered && (
         <div className="mt-3 rounded-lg border border-gold/30 bg-gold/10 p-3">
           <p className="text-sm text-stone-100">🤔 {transaction.clarificationQuestion}</p>
-          <div className="mt-2 flex gap-2">
-            <input
-              value={clarificationAnswer}
-              onChange={(e) => setClarificationAnswer(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSaveClarification();
-                }
-              }}
-              placeholder="Responde en pocas palabras..."
-              disabled={isPending}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
-            />
-            <button
-              type="button"
-              onClick={handleSaveClarification}
-              disabled={isPending || !clarificationAnswer.trim()}
-              className="shrink-0 rounded-lg bg-gold/90 px-3 py-2 text-sm font-medium text-obsidian transition hover:bg-gold disabled:opacity-50"
-            >
-              Guardar
-            </button>
-          </div>
+
+          {transaction.clarificationOptions.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {transaction.clarificationOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => handleTapClarificationOption(option)}
+                  disabled={isPending}
+                  className="rounded-lg bg-gold/90 px-4 py-2 text-sm font-medium text-obsidian transition hover:bg-gold disabled:opacity-50"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 flex gap-2">
+              <input
+                value={clarificationAnswer}
+                onChange={(e) => setClarificationAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveClarification();
+                  }
+                }}
+                placeholder="Responde en pocas palabras..."
+                disabled={isPending}
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+              />
+              <button
+                type="button"
+                onClick={handleSaveClarification}
+                disabled={isPending || !clarificationAnswer.trim()}
+                className="shrink-0 rounded-lg bg-gold/90 px-3 py-2 text-sm font-medium text-obsidian transition hover:bg-gold disabled:opacity-50"
+              >
+                Guardar
+              </button>
+            </div>
+          )}
+
           <p className="mt-1.5 text-[11px] text-stone-500">
             La proxima vez que registres algo parecido, Lumen ya sabra clasificarlo asi.
           </p>

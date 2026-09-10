@@ -34,6 +34,7 @@ export class MockAiExtractionProvider implements AiExtractionPort {
       confidence_score: amount !== null ? 0.6 : 0.2,
       uncertainties,
       clarification_question: null,
+      clarification_options: [],
       suggested_tags: [],
       suggested_space_name: null,
     };

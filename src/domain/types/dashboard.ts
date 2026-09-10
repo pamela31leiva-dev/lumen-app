@@ -51,6 +51,8 @@ export interface PendingTransactionSummary {
   createdAt: string;
   /** Pregunta breve de la IA cuando la entrada es ambigua entre dos clasificaciones plausibles; null si no aplica. */
   clarificationQuestion: string | null;
+  /** Opciones de un toque para responder clarificationQuestion (ej. ["Gasto","Ingreso"]); [] = respuesta en texto libre. */
+  clarificationOptions: string[];
   /** Etiquetas de subproyecto detectadas o editadas (ej. "lonchera", "matricula"). */
   tags: string[];
   /** Espacio donde la IA cree que este movimiento encaja mejor, si es distinto al activo. */

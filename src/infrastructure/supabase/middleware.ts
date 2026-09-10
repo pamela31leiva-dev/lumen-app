@@ -6,13 +6,19 @@ import { getValidatedSupabaseEnv } from '@/infrastructure/supabase/env';
 
 const PRIVATE_PREFIXES = ['/executive-board', '/settings', '/privacy'];
 const PUBLIC_AUTH_PREFIXES = ['/login', '/register'];
+const ACCEPT_TERMS_PATH = '/accept-terms';
+// /privacy queda exento del gate de consentimiento a proposito: la persona
+// debe poder leer la politica completa este o no aceptada todavia.
+const CONSENT_EXEMPT_PREFIXES = [ACCEPT_TERMS_PATH, '/privacy'];
 
 /**
  * Refresca la sesion de Supabase en cada request, protege rutas privadas
  * (redirige a /login sin sesion), evita que un usuario autenticado vea
  * /login, /register o el landing publico (lo manda directo a
- * /executive-board), y asegura que /executive-board siempre tenga una
- * cookie active_space_id valida antes de que la pagina renderice.
+ * /executive-board), asegura que /executive-board siempre tenga una
+ * cookie active_space_id valida antes de que la pagina renderice, y exige
+ * aceptacion explicita de Terminos/Habeas Data en /accept-terms antes de
+ * dejar pasar a cualquier otra ruta (ver CONSENT_EXEMPT_PREFIXES).
  * (/dashboard ya no es una ruta protegida aqui: next.config.mjs la
  * redirige a /executive-board, que si esta protegida).
  *
@@ -65,6 +71,34 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   if (isPrivateRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // Gate obligatorio de Terminos/Habeas Data (Ley 1581 de 2012): un usuario
+  // autenticado sin terms_accepted_at no puede llegar a ninguna ruta salvo
+  // las exentas, sin importar si viene de /login, /register, Google OAuth o
+  // la raiz publica. Si la consulta falla, se falla ABIERTO (se trata como
+  // ya aceptado): este chequeo es de cumplimiento, no de seguridad de acceso
+  // -- bloquear a todo el mundo por un error transitorio de esta consulta
+  // seria peor que dejar pasar ocasionalmente sin el gate.
+  const isConsentExempt = CONSENT_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  let hasAcceptedTerms = true;
+  if (user && supabase) {
+    try {
+      const { data: profile } = await supabase.from('profiles').select('terms_accepted_at').eq('id', user.id).maybeSingle();
+      hasAcceptedTerms = Boolean(profile?.terms_accepted_at);
+    } catch (err) {
+      console.error(
+        '[LUMEN MIDDLEWARE] Lookup de consentimiento fallo, se trata como ya aceptado:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  if (user && !hasAcceptedTerms && !isConsentExempt) {
+    return NextResponse.redirect(new URL(ACCEPT_TERMS_PATH, request.url));
+  }
+  if (user && hasAcceptedTerms && pathname === ACCEPT_TERMS_PATH) {
+    return NextResponse.redirect(new URL('/executive-board', request.url));
   }
 
   if (isPublicAuthRoute && user) {

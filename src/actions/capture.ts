@@ -80,6 +80,19 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
     };
   }
 
+  // Sin un monto no hay nada que registrar (transactions exige
+  // amount_original > 0): mejor un mensaje claro e inmediato aqui que dejar
+  // que el insert siguiente truene contra esa constraint con un error
+  // generico. Un numero suelto SI trae amount_original (ver system-prompt.ts
+  // "Numero suelto sin descripcion"), asi que esto solo dispara para
+  // entradas realmente vacias o sin ningun contexto financiero.
+  if (extraction.amount_original === null) {
+    return {
+      success: false,
+      error: 'No pude identificar un monto. Especifica el concepto, ej: "50.000 almuerzo".',
+    };
+  }
+
   // La IA solo puede nombrar un espacio de los que se le paso como contexto,
   // pero igual se resuelve contra la lista real (nunca se confia un id
   // inventado por el LLM) y solo se guarda si hay un match exacto.

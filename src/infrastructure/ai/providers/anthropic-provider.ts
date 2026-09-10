@@ -123,6 +123,7 @@ export class AnthropicExtractionProvider implements AiExtractionPort {
       // estan implementadas en GeminiExtractionProvider (el motor $0); si
       // Anthropic falla, el respaldo automatico a Gemini si las aplica.
       clarification_question: null,
+      clarification_options: [],
       suggested_tags: [],
       suggested_space_name: null,
     };

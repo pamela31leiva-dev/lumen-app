@@ -175,6 +175,8 @@ export async function getPendingTransactions(spaceId: string): Promise<PendingTr
     tags: Array.isArray(row.tags) ? row.tags : [],
     clarificationQuestion:
       (row.ai_raw_interpretation as { clarification_question?: string | null } | null)?.clarification_question ?? null,
+    clarificationOptions:
+      (row.ai_raw_interpretation as { clarification_options?: string[] } | null)?.clarification_options ?? [],
     suggestedSpaceId:
       (row.ai_raw_interpretation as { resolved_suggested_space_id?: string | null } | null)?.resolved_suggested_space_id ??
       null,

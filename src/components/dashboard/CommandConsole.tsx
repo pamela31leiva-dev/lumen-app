@@ -63,6 +63,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [showSlowNotice, setShowSlowNotice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
 
@@ -72,6 +73,19 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       recognitionRef.current?.stop();
     };
   }, []);
+
+  // El backend ya no se cuelga indefinidamente (timeout duro en
+  // GeminiExtractionProvider), pero un intento con reintentos por 503 igual
+  // puede tomar 10-20s reales. Esto evita que la espera se sienta como que
+  // la interfaz esta congelada.
+  useEffect(() => {
+    if (!isPending) {
+      setShowSlowNotice(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSlowNotice(true), 6000);
+    return () => clearTimeout(timer);
+  }, [isPending]);
 
   function submitText() {
     const trimmed = text.trim();
@@ -251,6 +265,9 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         <p className={cn('mt-2 text-xs', feedback.kind === 'success' ? 'text-growth' : 'text-red-400')}>
           {feedback.message}
         </p>
+      )}
+      {!feedback && showSlowNotice && (
+        <p className="mt-2 text-xs text-stone-500">La IA esta interpretando tu movimiento, ya casi...</p>
       )}
     </section>
   );

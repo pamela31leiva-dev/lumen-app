@@ -863,4 +863,33 @@ alter table public.system_logs add column if not exists space_id uuid references
 alter table public.transactions add column if not exists tags text[] not null default '{}';
 create index if not exists idx_transactions_tags on public.transactions using gin (tags);
 
+-- 0011: consentimiento explicito de TyC/Habeas Data (no auto-fijado) ----------
+update public.profiles set privacy_consent_at = null, terms_accepted_at = null;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_full_name text;
+begin
+    v_full_name := new.raw_user_meta_data ->> 'full_name';
+
+    insert into public.profiles (id, email, full_name)
+    values (new.id, new.email, v_full_name)
+    on conflict (id) do nothing;
+
+    insert into public.spaces (name, type, base_currency, owner_id)
+    values ('Espacio Personal', 'personal', 'COP', new.id);
+
+    insert into public.subscriptions (user_id, plan, status)
+    values (new.id, 'free', 'active')
+    on conflict (user_id) do nothing;
+
+    return new;
+end;
+$$;
+
 commit;

@@ -115,6 +115,7 @@ export class OpenAiExtractionProvider implements AiExtractionPort {
       // interactiva, etiquetas y sugerencia de espacio solo estan
       // implementadas en GeminiExtractionProvider.
       clarification_question: null,
+      clarification_options: [],
       suggested_tags: [],
       suggested_space_name: null,
     };
