@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { confirmTransaction, moveTransactionToSpace, rejectPendingTransaction } from '@/actions/confirm';
 import { getReceiptSignedUrl } from '@/actions/dashboard';
 import { saveClassificationHint } from '@/actions/classification';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import type { TransactionType } from '@/domain/types/capture';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
@@ -304,70 +305,47 @@ export function PendingConfirmationCard({
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-stone-300">Tipo</label>
-          <select
+          <CustomSelect
             value={type}
-            onChange={(e) => setType(e.target.value as TransactionType)}
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-          >
-            {Object.entries(TYPE_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setType(value as TransactionType)}
+            options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-xs font-medium text-stone-300">
             {type === 'transfer' ? 'Cuenta origen' : 'Cuenta'}
           </label>
-          <select
+          <CustomSelect
             value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-          >
-            <option value="">Selecciona...</option>
-            {activeAccounts.map((a) => (
-              <option key={a.accountId} value={a.accountId}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+            onChange={setAccountId}
+            placeholder="Selecciona..."
+            emptyLabel="No hay cuentas en este espacio"
+            options={activeAccounts.map((a) => ({ value: a.accountId, label: a.name }))}
+          />
         </div>
 
         {type === 'transfer' ? (
           <div>
             <label className="mb-1 block text-xs font-medium text-stone-300">Cuenta destino</label>
-            <select
+            <CustomSelect
               value={destinationAccountId}
-              onChange={(e) => setDestinationAccountId(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-            >
-              <option value="">Selecciona...</option>
-              {activeAccounts
+              onChange={setDestinationAccountId}
+              placeholder="Selecciona..."
+              emptyLabel="No hay otra cuenta disponible"
+              options={activeAccounts
                 .filter((a) => a.accountId !== accountId)
-                .map((a) => (
-                  <option key={a.accountId} value={a.accountId}>
-                    {a.name}
-                  </option>
-                ))}
-            </select>
+                .map((a) => ({ value: a.accountId, label: a.name }))}
+            />
           </div>
         ) : (
           <div>
             <label className="mb-1 block text-xs font-medium text-stone-300">Categoria</label>
-            <select
+            <CustomSelect
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-            >
-              <option value="">Sin categoria</option>
-              {relevantCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setCategoryId}
+              options={[{ value: '', label: 'Sin categoria' }, ...relevantCategories.map((c) => ({ value: c.id, label: c.name }))]}
+            />
           </div>
         )}
 

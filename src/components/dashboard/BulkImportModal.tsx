@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { processBulkImport } from '@/actions/import';
 import { buildImportPreview } from '@/domain/import/parse-row';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import type { ColumnMapping, RawImportRow } from '@/domain/types/import';
 import { cn } from '@/lib/utils';
 
 type Step = 'upload' | 'mapping' | 'preview';
-
-const NONE_OPTION = '__none__';
 
 interface BulkImportModalProps {
   spaceId: string;
@@ -329,23 +328,21 @@ interface MappingSelectProps {
 }
 
 function MappingSelect({ label, headers, value, onChange, required, allowNone, noneLabel }: MappingSelectProps) {
+  const showNoneOption = allowNone || !required;
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-stone-300">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
-      <select
-        value={value || NONE_OPTION}
-        onChange={(e) => onChange(e.target.value === NONE_OPTION ? '' : e.target.value)}
-        className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-      >
-        {(allowNone || !required) && <option value={NONE_OPTION}>{noneLabel ?? 'Ninguna'}</option>}
-        {headers.map((header) => (
-          <option key={header} value={header}>
-            {header}
-          </option>
-        ))}
-      </select>
+      <CustomSelect
+        value={value}
+        onChange={onChange}
+        placeholder={noneLabel ?? 'Ninguna'}
+        options={[
+          ...(showNoneOption ? [{ value: '', label: noneLabel ?? 'Ninguna' }] : []),
+          ...headers.map((header) => ({ value: header, label: header })),
+        ]}
+      />
     </div>
   );
 }

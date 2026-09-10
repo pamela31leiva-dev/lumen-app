@@ -3,15 +3,16 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSpace } from '@/actions/dashboard';
+import { SPACE_TYPE_LABEL, SpaceTypeIcon } from '@/components/dashboard/space-type-icon';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import type { SpaceType } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
 
-const SPACE_TYPE_LABEL: Record<SpaceType, string> = {
-  personal: 'Personal',
-  family: 'Familiar',
-  business: 'Negocio',
-  project: 'Proyecto',
-};
+const SPACE_TYPE_OPTIONS = (Object.entries(SPACE_TYPE_LABEL) as [SpaceType, string][]).map(([value, label]) => ({
+  value,
+  label,
+  icon: <SpaceTypeIcon type={value} className="h-4 w-4 shrink-0 text-stone-400" />,
+}));
 
 interface CreateSpaceDialogProps {
   /** Clase del boton disparador; permite reusar este dialogo con distinto estilo (SpaceSwitcher vs /settings). */
@@ -96,18 +97,12 @@ export function CreateSpaceDialog({
                 <label htmlFor="space-type" className="mb-1 block text-xs font-medium text-stone-300">
                   Tipo
                 </label>
-                <select
+                <CustomSelect
                   id="space-type"
                   value={type}
-                  onChange={(e) => setType(e.target.value as SpaceType)}
-                  className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                >
-                  {Object.entries(SPACE_TYPE_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setType(value as SpaceType)}
+                  options={SPACE_TYPE_OPTIONS}
+                />
               </div>
 
               {formError && <p className="text-xs text-red-400">{formError}</p>}
