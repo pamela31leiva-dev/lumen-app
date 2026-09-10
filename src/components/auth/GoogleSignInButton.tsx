@@ -26,7 +26,10 @@ export function GoogleSignInButton() {
     setError(null);
     setIsRedirecting(true);
     const supabase = getSupabaseBrowserClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // Sin replace: un NEXT_PUBLIC_SITE_URL con slash final produciria
+    // ".../auth/callback" con doble slash, que no calzaria exacto con la
+    // lista blanca de Redirect URLs de Supabase.
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/+$/, '');
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${siteUrl}/auth/callback` },

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { reportError } from '@/lib/telemetry/reporter';
 
@@ -45,17 +46,24 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${redirectOrigin}${next}`);
     }
 
+    const cookieNames = (await cookies()).getAll().map((c) => c.name);
     await reportError({
       source: 'oauth-callback-exchange-failed',
       message: error.message,
-      context: { status: error.status, code: error.code },
+      // Nunca se loguean valores de cookies, solo nombres — para ver si la
+      // cookie del "code verifier" de PKCE (sb-*-auth-token-code-verifier)
+      // llego junto con el request y descartar asi un problema de cookies
+      // cross-site vs. un problema real de la llamada a Supabase.
+      context: { status: error.status, code: error.code, cookieNames },
     });
     return NextResponse.redirect(`${redirectOrigin}/login?error=oauth`);
   }
 
+  const cookieNames = (await cookies()).getAll().map((c) => c.name);
   await reportError({
     source: 'oauth-callback-missing-code',
     message: 'El callback de OAuth se llamo sin "code" ni "error" en la URL.',
+    context: { cookieNames },
   });
   return NextResponse.redirect(`${redirectOrigin}/login?error=oauth`);
 }

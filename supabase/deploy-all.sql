@@ -759,4 +759,10 @@ create index if not exists idx_system_logs_source on public.system_logs (source)
 
 alter table public.system_logs enable row level security;
 
+-- 0006: por si system_logs quedo creada antes con menos columnas
+-- ("create table if not exists" no altera una tabla ya existente).
+alter table public.system_logs add column if not exists stack text;
+alter table public.system_logs add column if not exists digest text;
+alter table public.system_logs add column if not exists context jsonb;
+
 commit;
