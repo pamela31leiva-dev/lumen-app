@@ -18,3 +18,27 @@ body {
 .font-tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Microanimaciones compartidas: paneles flotantes (CustomSelect,
+   SpaceSwitcher) y tarjetas que aparecen (Accion Feed). Duraciones cortas
+   a proposito -- dan vida sin sentirse lentas. Respeta prefers-reduced-motion. */
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-scale-in {
+  animation: fade-scale-in 0.14s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-scale-in {
+    animation: none;
+  }
+}

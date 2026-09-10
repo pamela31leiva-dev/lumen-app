@@ -39,6 +39,11 @@ export function PendingConfirmationCard({
   const [clarificationAnswer, setClarificationAnswer] = useState('');
   const [spaceSuggestionDismissed, setSpaceSuggestionDismissed] = useState(false);
   const [tagsInput, setTagsInput] = useState(transaction.tags.join(', '));
+  // Optimista: al confirmar/descartar/mover, la tarjeta se desvanece de
+  // inmediato en vez de esperar a que router.refresh() vuelva a traer la
+  // lista del servidor -- la sincronizacion real sigue pasando, solo que en
+  // segundo plano, para que la espera nunca se sienta muerta.
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [accountId, setAccountId] = useState(transaction.accountId ?? '');
@@ -56,15 +61,31 @@ export function PendingConfirmationCard({
   const relevantCategories = categories.filter((c) => c.kind === (type === 'income' ? 'income' : 'expense'));
   const confidencePct = transaction.confidenceScore !== null ? Math.round(transaction.confidenceScore * 100) : null;
 
+  // Cero Friccion: si la IA esta razonablemente segura y no hay nada que
+  // resolver (ambiguedad, sugerencia de espacio, dudas), no hace falta
+  // mostrar el formulario completo -- un toque en "Confirmar" basta. La
+  // persona sigue pudiendo abrir el detalle si quiere ajustar algo.
+  const isHighConfidence =
+    confidencePct !== null &&
+    confidencePct >= 85 &&
+    transaction.uncertainties.length === 0 &&
+    !transaction.clarificationQuestion &&
+    !transaction.suggestedSpaceId;
+  const [expanded, setExpanded] = useState(!isHighConfidence);
+
+  function removeOptimistically() {
+    setIsRemoving(true);
+    router.refresh();
+  }
+
   function handleConfirm() {
     setError(null);
     const parsedAmount = Number(amount);
-    if (!accountId) {
-      setError('Selecciona la cuenta.');
-      return;
-    }
-    if (type === 'transfer' && (!destinationAccountId || destinationAccountId === accountId)) {
-      setError('Selecciona una cuenta destino distinta de la de origen.');
+    // "Cuenta" NUNCA bloquea: si queda vacia, el servidor asigna la primera
+    // cuenta del espacio (o crea "Efectivo" si no hay ninguna). Un transfer
+    // si necesita las dos cuentas explicitas -- ahi no hay forma segura de adivinar.
+    if (type === 'transfer' && (!accountId || !destinationAccountId || destinationAccountId === accountId)) {
+      setError('Selecciona cuenta origen y destino, distintas entre si.');
       return;
     }
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -77,7 +98,7 @@ export function PendingConfirmationCard({
         transaction_id: transaction.id,
         space_id: spaceId,
         type,
-        account_id: accountId,
+        account_id: accountId || '',
         destination_account_id: type === 'transfer' ? destinationAccountId : null,
         category_id: type === 'transfer' ? null : categoryId || null,
         amount_original: parsedAmount,
@@ -96,7 +117,7 @@ export function PendingConfirmationCard({
         setError(result.error);
         return;
       }
-      router.refresh();
+      removeOptimistically();
     });
   }
 
@@ -108,7 +129,7 @@ export function PendingConfirmationCard({
         setError(result.error);
         return;
       }
-      router.refresh();
+      removeOptimistically();
     });
   }
 
@@ -159,7 +180,7 @@ export function PendingConfirmationCard({
         setError(result.error);
         return;
       }
-      router.refresh();
+      removeOptimistically();
     });
   }
 
@@ -177,7 +198,12 @@ export function PendingConfirmationCard({
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-elevated p-5 transition-colors hover:border-gold/15">
+    <div
+      className={cn(
+        'animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-all duration-300',
+        isRemoving ? 'pointer-events-none scale-95 opacity-0' : 'hover:border-gold/15',
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-stone-100">{transaction.description ?? 'Movimiento sin descripcion'}</p>
@@ -200,7 +226,7 @@ export function PendingConfirmationCard({
       </div>
 
       {transaction.suggestedSpaceId && transaction.suggestedSpaceName && !spaceSuggestionDismissed && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-600/30 bg-emerald-600/10 p-3">
+        <div className="animate-fade-scale-in mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-600/30 bg-emerald-600/10 p-3">
           <p className="text-sm text-stone-100">
             Esto parece ser de <span className="font-medium text-emerald-400">{transaction.suggestedSpaceName}</span>, no
             de este espacio.
@@ -227,7 +253,7 @@ export function PendingConfirmationCard({
       )}
 
       {transaction.clarificationQuestion && !clarificationAnswered && (
-        <div className="mt-3 rounded-lg border border-gold/30 bg-gold/10 p-3">
+        <div className="animate-fade-scale-in mt-3 rounded-lg border border-gold/30 bg-gold/10 p-3">
           <p className="text-sm text-stone-100">🤔 {transaction.clarificationQuestion}</p>
 
           {transaction.clarificationOptions.length > 0 ? (
@@ -302,155 +328,202 @@ export function PendingConfirmationCard({
         </a>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-stone-300">Tipo</label>
-          <CustomSelect
-            value={type}
-            onChange={(value) => setType(value as TransactionType)}
-            options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-stone-300">
-            {type === 'transfer' ? 'Cuenta origen' : 'Cuenta'}
-          </label>
-          <CustomSelect
-            value={accountId}
-            onChange={setAccountId}
-            placeholder="Selecciona..."
-            emptyLabel="No hay cuentas en este espacio"
-            options={activeAccounts.map((a) => ({ value: a.accountId, label: a.name }))}
-          />
-        </div>
-
-        {type === 'transfer' ? (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-stone-300">Cuenta destino</label>
-            <CustomSelect
-              value={destinationAccountId}
-              onChange={setDestinationAccountId}
-              placeholder="Selecciona..."
-              emptyLabel="No hay otra cuenta disponible"
-              options={activeAccounts
-                .filter((a) => a.accountId !== accountId)
-                .map((a) => ({ value: a.accountId, label: a.name }))}
-            />
+      {!expanded ? (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300"
+          >
+            Ver detalles
+          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleReject}
+              disabled={isPending}
+              className="rounded-lg px-3 py-2 text-sm text-stone-400 hover:text-red-400 disabled:opacity-50"
+            >
+              Descartar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={cn(
+                'rounded-lg bg-wealth px-5 py-2 text-sm font-medium text-white transition hover:bg-wealth-hover',
+                isPending && 'opacity-60',
+              )}
+            >
+              {isPending ? 'Guardando...' : 'Confirmar'}
+            </button>
           </div>
-        ) : (
-          <div>
-            <label className="mb-1 block text-xs font-medium text-stone-300">Categoria</label>
-            <CustomSelect
-              value={categoryId}
-              onChange={setCategoryId}
-              options={[{ value: '', label: 'Sin categoria' }, ...relevantCategories.map((c) => ({ value: c.id, label: c.name }))]}
-            />
-          </div>
-        )}
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-stone-300">Monto</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-          />
         </div>
-
-        {showCurrencyDetails ? (
-          <>
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-stone-300">Moneda</label>
+              <label className="mb-1 block text-xs font-medium text-stone-300">Tipo</label>
+              <CustomSelect
+                value={type}
+                onChange={(value) => setType(value as TransactionType)}
+                options={Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }))}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-stone-300">
+                {type === 'transfer' ? 'Cuenta origen' : 'Cuenta (opcional)'}
+              </label>
+              <CustomSelect
+                value={accountId}
+                onChange={setAccountId}
+                placeholder="Automatica si no eliges"
+                emptyLabel="Se creara una cuenta automatica al confirmar"
+                options={activeAccounts.map((a) => ({ value: a.accountId, label: a.name }))}
+              />
+            </div>
+
+            {type === 'transfer' ? (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-stone-300">Cuenta destino</label>
+                <CustomSelect
+                  value={destinationAccountId}
+                  onChange={setDestinationAccountId}
+                  placeholder="Selecciona..."
+                  emptyLabel="No hay otra cuenta disponible"
+                  options={activeAccounts
+                    .filter((a) => a.accountId !== accountId)
+                    .map((a) => ({ value: a.accountId, label: a.name }))}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-stone-300">Categoria</label>
+                <CustomSelect
+                  value={categoryId}
+                  onChange={setCategoryId}
+                  options={[{ value: '', label: 'Sin categoria' }, ...relevantCategories.map((c) => ({ value: c.id, label: c.name }))]}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-stone-300">Monto</label>
               <input
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                maxLength={3}
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              />
+            </div>
+
+            {showCurrencyDetails ? (
+              <>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-stone-300">Moneda</label>
+                  <input
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+                    maxLength={3}
+                    className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-stone-300">Tasa de cambio</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-end sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCurrencyDetails(true)}
+                  className="text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300"
+                >
+                  ¿Es en otra moneda? Actualmente en {currency}
+                </button>
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-stone-300">Fecha</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
                 className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-stone-300">Tasa de cambio</label>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-stone-300">Descripcion</label>
               <input
-                type="number"
-                min="0"
-                step="0.0001"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
-          </>
-        ) : (
-          <div className="flex items-end sm:col-span-2">
+
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-stone-300">Etiquetas (opcional)</label>
+              <input
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="ej. lonchera, colegio"
+                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              />
+              <p className="mt-1 text-[11px] text-stone-500">Separadas por comas. Sirven para agrupar iniciativas dentro de este espacio.</p>
+            </div>
+          </div>
+
+          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+
+          <div className="mt-4 flex justify-end gap-2">
+            {isHighConfidence && (
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                disabled={isPending}
+                className="mr-auto text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300"
+              >
+                Ocultar detalles
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setShowCurrencyDetails(true)}
-              className="text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300"
+              onClick={handleReject}
+              disabled={isPending}
+              className="rounded-lg px-3 py-2 text-sm text-stone-400 hover:text-red-400 disabled:opacity-50"
             >
-              ¿Es en otra moneda? Actualmente en {currency}
+              Descartar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={cn(
+                'rounded-lg bg-wealth px-4 py-2 text-sm font-medium text-white transition hover:bg-wealth-hover',
+                isPending && 'opacity-60',
+              )}
+            >
+              {isPending ? 'Guardando...' : 'Confirmar'}
             </button>
           </div>
-        )}
+        </>
+      )}
 
-        <div>
-          <label className="mb-1 block text-xs font-medium text-stone-300">Fecha</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-          />
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-stone-300">Descripcion</label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-          />
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-stone-300">Etiquetas (opcional)</label>
-          <input
-            value={tagsInput}
-            onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="ej. lonchera, colegio"
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-          />
-          <p className="mt-1 text-[11px] text-stone-500">Separadas por comas. Sirven para agrupar iniciativas dentro de este espacio.</p>
-        </div>
-      </div>
-
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
-
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={handleReject}
-          disabled={isPending}
-          className="rounded-lg px-3 py-2 text-sm text-stone-400 hover:text-red-400 disabled:opacity-50"
-        >
-          Descartar
-        </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={isPending}
-          className={cn(
-            'rounded-lg bg-wealth px-4 py-2 text-sm font-medium text-white transition hover:bg-wealth-hover',
-            isPending && 'opacity-60',
-          )}
-        >
-          {isPending ? 'Guardando...' : 'Confirmar'}
-        </button>
-      </div>
+      {!expanded && error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </div>
   );
 }

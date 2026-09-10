@@ -19,7 +19,7 @@ export default async function PrivacyPage() {
     <main className="min-h-screen bg-obsidian text-stone-100">
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="privacy" />
 
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8 pb-24 sm:pb-8">
         <div>
           <h1 className="text-xl font-medium">Centro de Privacidad &amp; Habeas Data</h1>
           <p className="mt-2 text-sm text-stone-400">

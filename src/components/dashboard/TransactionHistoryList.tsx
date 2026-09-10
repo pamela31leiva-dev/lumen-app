@@ -28,13 +28,23 @@ export function TransactionHistoryList({ spaceId, items, canDelete }: Transactio
   const [isPending, startTransition] = useTransition();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Optimista: la fila desaparece de inmediato al confirmar el borrado, sin
+  // esperar el round-trip de router.refresh() (que sigue pasando en segundo
+  // plano para que la lista real del servidor quede al dia).
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
   function handleDelete(id: string) {
     setError(null);
+    setRemovedIds((prev) => new Set(prev).add(id));
     startTransition(async () => {
       const result = await deleteTransaction(id, spaceId);
       if (!result.success) {
         setError(result.error);
+        setRemovedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         setConfirmingId(null);
         return;
       }
@@ -43,7 +53,9 @@ export function TransactionHistoryList({ spaceId, items, canDelete }: Transactio
     });
   }
 
-  if (items.length === 0) {
+  const visibleItems = items.filter((item) => !removedIds.has(item.id));
+
+  if (visibleItems.length === 0) {
     return <p className="py-3 text-sm text-stone-500">Todavia no hay movimientos confirmados en este espacio.</p>;
   }
 
@@ -51,8 +63,8 @@ export function TransactionHistoryList({ spaceId, items, canDelete }: Transactio
     <div>
       {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
       <ul className="flex flex-col divide-y divide-white/10">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between gap-3 py-3">
+        {visibleItems.map((item) => (
+          <li key={item.id} className="animate-fade-scale-in flex items-center justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm text-stone-100">{item.description ?? TYPE_LABEL[item.type]}</p>
               <p className="text-xs text-stone-500">

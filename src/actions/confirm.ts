@@ -3,6 +3,47 @@
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import type { ConfirmTransactionDTO, ConfirmTransactionResult } from '@/domain/types/capture';
 
+type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+
+/**
+ * "Cuenta" nunca debe bloquear el guardado (Cero Friccion): si no se eligio
+ * ninguna, se usa la primera cuenta activa del espacio, y si el espacio no
+ * tiene NINGUNA (deberia ser imposible desde 0012_default_account_per_space,
+ * pero esto es la red de seguridad si esa migracion no ha corrido todavia o
+ * alguien borro todas las cuentas), se crea una "Efectivo" al vuelo. Solo
+ * aplica a income/expense: un transfer necesita dos cuentas reales y
+ * distintas, elegidas a proposito -- auto-asignar ahi seria adivinar mal la
+ * plata de alguien, no quitar friccion.
+ */
+async function resolveAccountId(
+  supabase: ServerClient,
+  spaceId: string,
+  userId: string,
+  requestedAccountId: string | null | undefined,
+): Promise<string | null> {
+  if (requestedAccountId) return requestedAccountId;
+
+  const { data: existing } = await supabase
+    .from('accounts')
+    .select('id')
+    .eq('space_id', spaceId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing.id;
+
+  const { data: space } = await supabase.from('spaces').select('base_currency').eq('id', spaceId).single();
+
+  const { data: created, error } = await supabase
+    .from('accounts')
+    .insert({ space_id: spaceId, name: 'Efectivo', type: 'cash', currency: space?.base_currency ?? 'COP', created_by: userId })
+    .select('id')
+    .single();
+
+  return error || !created ? null : created.id;
+}
+
 /**
  * La persona revisa y corrige lo que la IA propuso, y confirma. Esta es la
  * unica via para que una transaccion pase a status = 'confirmed' (la
@@ -20,11 +61,21 @@ export async function confirmTransaction(payload: ConfirmTransactionDTO): Promis
     return { success: false, error: 'No autorizado' };
   }
 
+  const accountId =
+    payload.type === 'transfer' ? payload.account_id : await resolveAccountId(supabase, payload.space_id, user.id, payload.account_id);
+
+  if (!accountId) {
+    return { success: false, error: 'No se pudo asignar una cuenta. Intenta de nuevo.' };
+  }
+  if (payload.type === 'transfer' && !payload.destination_account_id) {
+    return { success: false, error: 'Selecciona la cuenta destino.' };
+  }
+
   const { data: transaction, error } = await supabase
     .from('transactions')
     .update({
       type: payload.type,
-      account_id: payload.account_id,
+      account_id: accountId,
       destination_account_id: payload.type === 'transfer' ? (payload.destination_account_id ?? null) : null,
       category_id: payload.type === 'transfer' ? null : (payload.category_id ?? null),
       amount_original: payload.amount_original,
