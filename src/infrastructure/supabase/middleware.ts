@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
+import { getValidatedSupabaseEnv } from '@/infrastructure/supabase/env';
 
 const PRIVATE_PREFIXES = ['/executive-board', '/settings', '/privacy'];
 const PUBLIC_AUTH_PREFIXES = ['/login', '/register'];
@@ -15,13 +16,7 @@ const PUBLIC_AUTH_PREFIXES = ['/login', '/register'];
  * redirige a /executive-board, que si esta protegida).
  */
 export async function updateSupabaseSession(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      'Faltan NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY. Configuralas en las variables de entorno del proyecto (Vercel: Project Settings -> Environment Variables) y vuelve a desplegar.',
-    );
-  }
+  const { url: supabaseUrl, anonKey: supabaseAnonKey } = getValidatedSupabaseEnv();
 
   let response = NextResponse.next({ request });
 

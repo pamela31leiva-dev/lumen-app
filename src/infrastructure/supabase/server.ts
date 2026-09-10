@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getValidatedSupabaseEnv } from '@/infrastructure/supabase/env';
 
 /**
  * Cliente Supabase para Server Components / Server Actions. Usa el JWT de la
@@ -8,10 +9,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  */
 export async function getSupabaseServerClient() {
   const cookieStore = await cookies();
+  const { url, anonKey } = getValidatedSupabaseEnv();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {

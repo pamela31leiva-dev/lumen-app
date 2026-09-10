@@ -40,22 +40,35 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = await getSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${redirectOrigin}${next}`);
-    }
+    // Envuelto en try/catch a proposito: si NEXT_PUBLIC_SUPABASE_ANON_KEY
+    // esta mal configurada (ej. pegada varias veces en Vercel), el fetch
+    // interno de Supabase lanza en vez de devolver { error }, y sin esto la
+    // ruta terminaba en un 500 sin loguear nada en vez de degradar a
+    // /login?error=oauth como cualquier otro fallo de OAuth.
+    try {
+      const supabase = await getSupabaseServerClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        return NextResponse.redirect(`${redirectOrigin}${next}`);
+      }
 
-    const cookieNames = (await cookies()).getAll().map((c) => c.name);
-    await reportError({
-      source: 'oauth-callback-exchange-failed',
-      message: error.message,
-      // Nunca se loguean valores de cookies, solo nombres — para ver si la
-      // cookie del "code verifier" de PKCE (sb-*-auth-token-code-verifier)
-      // llego junto con el request y descartar asi un problema de cookies
-      // cross-site vs. un problema real de la llamada a Supabase.
-      context: { status: error.status, code: error.code, cookieNames },
-    });
+      const cookieNames = (await cookies()).getAll().map((c) => c.name);
+      await reportError({
+        source: 'oauth-callback-exchange-failed',
+        message: error.message,
+        // Nunca se loguean valores de cookies, solo nombres — para ver si la
+        // cookie del "code verifier" de PKCE (sb-*-auth-token-code-verifier)
+        // llego junto con el request y descartar asi un problema de cookies
+        // cross-site vs. un problema real de la llamada a Supabase.
+        context: { status: error.status, code: error.code, cookieNames },
+      });
+    } catch (unexpectedError) {
+      await reportError({
+        source: 'oauth-callback-exchange-threw',
+        message: unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError),
+        stack: unexpectedError instanceof Error ? unexpectedError.stack : undefined,
+      });
+    }
     return NextResponse.redirect(`${redirectOrigin}/login?error=oauth`);
   }
 

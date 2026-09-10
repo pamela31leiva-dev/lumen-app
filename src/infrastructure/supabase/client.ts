@@ -1,6 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { getValidatedSupabaseEnv } from '@/infrastructure/supabase/env';
 
 /** Cliente Supabase para Client Components. Respeta RLS: opera como el usuario autenticado. */
 export function getSupabaseBrowserClient() {
-  return createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const { url, anonKey } = getValidatedSupabaseEnv();
+  return createBrowserClient(url, anonKey);
 }
