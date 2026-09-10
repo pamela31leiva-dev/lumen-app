@@ -56,6 +56,8 @@ function getSpeechRecognitionCtor(): (new () => MinimalSpeechRecognition) | null
  * Escribir/dictar y presionar Enter (o Registrar) debe sentirse tan rapido
  * como mandar un mensaje de texto.
  */
+const MAX_FILE_SIZE_MB = 15;
+
 export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const router = useRouter();
   const [text, setText] = useState('');
@@ -64,7 +66,13 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [showSlowNotice, setShowSlowNotice] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Archivo elegido (camara o subida) en espera de que el usuario confirme
+  // que es el correcto antes de enviarlo a la IA -- "muestra el nombre o
+  // miniatura del archivo seleccionado antes de confirmar".
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -73,6 +81,14 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       recognitionRef.current?.stop();
     };
   }, []);
+
+  // Libera la miniatura anterior (u la ultima, al desmontar) — createObjectURL
+  // reserva memoria hasta que se revoque explicitamente.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   // El backend ya no se cuelga indefinidamente (timeout duro en
   // GeminiExtractionProvider), pero un intento con reintentos por 503 igual
@@ -109,11 +125,32 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter') {
       event.preventDefault();
-      submitText();
+      handleRegistrar();
     }
   }
 
-  function submitFile(file: File) {
+  function clearSelectedFile() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (uploadInputRef.current) uploadInputRef.current.value = '';
+  }
+
+  function handleFileSelected(file: File) {
+    setFeedback(null);
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setFeedback({ kind: 'error', message: `El archivo pesa mas de ${MAX_FILE_SIZE_MB}MB. Usa uno mas liviano.` });
+      return;
+    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(file);
+    setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
+  }
+
+  function submitSelectedFile() {
+    const file = selectedFile;
+    if (!file) return;
     setFeedback(null);
     startTransition(async () => {
       const supabase = getSupabaseBrowserClient();
@@ -139,13 +176,19 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         return;
       }
 
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      clearSelectedFile();
       setFeedback({
         kind: 'success',
         message: result.needsReview ? 'Documento guardado. Vale la pena revisar algunos detalles.' : 'Documento guardado y listo para confirmar.',
       });
       router.refresh();
     });
+  }
+
+  /** El boton "Registrar" hace lo que corresponda: si hay un archivo esperando confirmacion, lo envia; si no, envia el texto. */
+  function handleRegistrar() {
+    if (selectedFile) submitSelectedFile();
+    else submitText();
   }
 
   function toggleListening() {
@@ -187,13 +230,42 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       id="quick-capture"
       className="sticky top-4 z-20 rounded-xl border border-white/10 bg-elevated/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur transition-colors hover:border-gold/15 sm:px-5"
     >
+      {selectedFile && (
+        <div className="animate-fade-scale-in mb-2 flex items-center gap-2 rounded-lg border border-white/10 bg-obsidian px-3 py-2">
+          {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no un asset optimizable por next/image
+            <img src={previewUrl} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/5 text-red-400">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v5h5" />
+              </svg>
+            </div>
+          )}
+          <span className="min-w-0 flex-1 truncate text-xs text-stone-300">{selectedFile.name}</span>
+          <button
+            type="button"
+            onClick={clearSelectedFile}
+            disabled={isPending}
+            title="Quitar archivo"
+            aria-label="Quitar archivo"
+            className="shrink-0 rounded-md p-1 text-stone-500 transition hover:bg-white/5 hover:text-stone-300 disabled:opacity-50"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => cameraInputRef.current?.click()}
           disabled={isPending}
-          title="Tomar o adjuntar una foto"
-          aria-label="Tomar o adjuntar una foto"
+          title="Tomar una foto"
+          aria-label="Tomar una foto"
           className="flex shrink-0 items-center justify-center rounded-lg border border-white/10 p-2.5 text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
@@ -206,14 +278,41 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
           </svg>
         </button>
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) submitFile(file);
+            if (file) handleFileSelected(file);
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => uploadInputRef.current?.click()}
+          disabled={isPending}
+          title="Subir imagen o PDF (comprobante, factura)"
+          aria-label="Subir imagen o PDF"
+          className="flex shrink-0 items-center justify-center rounded-lg border border-white/10 p-2.5 text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21.44 11.05 12.5 20a5 5 0 0 1-7.07-7.07l8.94-8.94a3.5 3.5 0 0 1 4.95 4.95L10.4 17.87a2 2 0 0 1-2.83-2.83l7.78-7.78"
+            />
+          </svg>
+        </button>
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileSelected(file);
           }}
         />
 
@@ -239,18 +338,24 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         )}
 
         <input
-          value={text}
+          value={selectedFile ? '' : text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={isPending}
-          placeholder={isListening ? 'Escuchando...' : 'Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo'}
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+          disabled={isPending || Boolean(selectedFile)}
+          placeholder={
+            selectedFile
+              ? 'Archivo listo — presiona Registrar'
+              : isListening
+                ? 'Escuchando...'
+                : 'Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo'
+          }
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
         />
 
         <button
           type="button"
-          onClick={submitText}
-          disabled={isPending || !text.trim()}
+          onClick={handleRegistrar}
+          disabled={isPending || (!text.trim() && !selectedFile)}
           className="shrink-0 rounded-lg bg-wealth px-4 py-2.5 text-sm font-medium text-white transition hover:bg-wealth-hover disabled:opacity-50"
         >
           {isPending ? '...' : 'Registrar'}

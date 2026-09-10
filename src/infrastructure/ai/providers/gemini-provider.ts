@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, SchemaType, type Part } from '@google/generative-ai
 import type { AiExtractionInput, AiExtractionPort } from '@/domain/ai/ai-extraction-port';
 import type { AiExtractionResult, TransactionType } from '@/domain/types/capture';
 import { EXTRACTION_SYSTEM_PROMPT } from '@/domain/ai/system-prompt';
-import { getImageAsBase64 } from '@/infrastructure/ai/shared/resolve-image';
+import { getGeminiInlineData } from '@/infrastructure/ai/shared/resolve-image';
 
 const RESPONSE_SCHEMA = {
   type: SchemaType.OBJECT,
@@ -102,14 +102,18 @@ export class GeminiExtractionProvider implements AiExtractionPort {
     }
     if (input.text) instructionLines.push(`Texto o transcripcion del usuario:\n"""${input.text}"""`);
     if (input.storagePath && !input.text) {
-      instructionLines.push('El usuario adjunto un documento; interpretalo a partir de la imagen incluida.');
+      instructionLines.push(
+        input.mimeType === 'application/pdf'
+          ? 'El usuario adjunto un PDF (comprobante o factura); interpretalo a partir del documento incluido.'
+          : 'El usuario adjunto una imagen (foto o captura de comprobante); interpretala a partir de la imagen incluida.',
+      );
     }
     parts.push({ text: instructionLines.join('\n') });
 
     if (input.storagePath) {
-      const image = await getImageAsBase64(input.storagePath, input.mimeType);
-      if (image) {
-        parts.push({ inlineData: { mimeType: image.mimeType, data: image.base64 } });
+      const document = await getGeminiInlineData(input.storagePath, input.mimeType);
+      if (document) {
+        parts.push({ inlineData: { mimeType: document.mimeType, data: document.base64 } });
       }
     }
 
