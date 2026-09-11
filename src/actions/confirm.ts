@@ -10,7 +10,11 @@ type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
  * ninguna, se usa la primera cuenta activa del espacio, y si el espacio no
  * tiene NINGUNA (deberia ser imposible desde 0012_default_account_per_space,
  * pero esto es la red de seguridad si esa migracion no ha corrido todavia o
- * alguien borro todas las cuentas), se crea una "Efectivo" al vuelo. Solo
+ * alguien borro todas las cuentas), se crea una "Efectivo" al vuelo. La
+ * resolucion completa vive en get_or_create_default_account (0018): un
+ * select-luego-insert hecho aqui en JS podia crear dos cuentas "Efectivo" si
+ * dos confirmaciones llegaban a la vez (doble tap en movil, dos pestañas);
+ * la funcion en Postgres lo hace atomico via un indice unico parcial. Solo
  * aplica a income/expense: un transfer necesita dos cuentas reales y
  * distintas, elegidas a proposito -- auto-asignar ahi seria adivinar mal la
  * plata de alguien, no quitar friccion.
@@ -23,25 +27,20 @@ async function resolveAccountId(
 ): Promise<string | null> {
   if (requestedAccountId) return requestedAccountId;
 
-  const { data: existing } = await supabase
-    .from('accounts')
-    .select('id')
-    .eq('space_id', spaceId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (existing) return existing.id;
-
   const { data: space } = await supabase.from('spaces').select('base_currency').eq('id', spaceId).single();
 
-  const { data: created, error } = await supabase
-    .from('accounts')
-    .insert({ space_id: spaceId, name: 'Efectivo', type: 'cash', currency: space?.base_currency ?? 'COP', created_by: userId })
-    .select('id')
-    .single();
+  const { data: accountId, error } = await supabase.rpc('get_or_create_default_account', {
+    p_space_id: spaceId,
+    p_user_id: userId,
+    p_currency: space?.base_currency ?? 'COP',
+  });
 
-  return error || !created ? null : created.id;
+  if (error) {
+    console.error('Error al resolver la cuenta por defecto:', error);
+    return null;
+  }
+
+  return accountId;
 }
 
 /**

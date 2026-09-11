@@ -174,7 +174,7 @@ export class GeminiExtractionProvider implements AiExtractionPort {
     parts: Part[],
   ): ReturnType<typeof model.generateContent> {
     const maxAttempts = 3;
-    const ATTEMPT_TIMEOUT_MS = 20_000;
+    const ATTEMPT_TIMEOUT_MS = 9_000;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {

@@ -114,10 +114,19 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
   const latestTranscriptRef = useRef('');
+  const speechSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearSpeechSafetyTimer() {
+    if (speechSafetyTimerRef.current) {
+      clearTimeout(speechSafetyTimerRef.current);
+      speechSafetyTimerRef.current = null;
+    }
+  }
 
   useEffect(() => {
     setSpeechSupported(getSpeechRecognitionCtor() !== null);
     return () => {
+      clearSpeechSafetyTimer();
       recognitionRef.current?.stop();
     };
   }, []);
@@ -251,6 +260,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
 
   function toggleListening() {
     if (isListening) {
+      clearSpeechSafetyTimer();
       recognitionRef.current?.stop();
       return;
     }
@@ -276,12 +286,14 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       setText(transcript);
     };
     recognition.onerror = () => {
+      clearSpeechSafetyTimer();
       setIsListening(false);
       setFeedback({ kind: 'error', message: 'No se pudo escuchar el microfono. Intenta de nuevo o escribe.' });
     };
     // Widget de voz ultrarrapido: en cuanto termina de hablar, se envia solo
     // -- no hace falta tocar "Registrar" despues de dictar.
     recognition.onend = () => {
+      clearSpeechSafetyTimer();
       setIsListening(false);
       const finalTranscript = latestTranscriptRef.current.trim();
       if (finalTranscript) submitText(finalTranscript);
@@ -292,6 +304,16 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     setFeedback(null);
     setIsListening(true);
     recognition.start();
+
+    // Temporizador de seguridad: si el usuario se distrae y nunca vuelve a
+    // tocar el boton para detener el dictado, continuous=true dejaria el
+    // microfono escuchando indefinidamente. A los 75s se fuerza el stop
+    // (dispara onend igual que un stop manual, asi que si ya alcanzo a
+    // dictar algo se envia solo).
+    const SPEECH_SAFETY_TIMEOUT_MS = 75_000;
+    speechSafetyTimerRef.current = setTimeout(() => {
+      recognitionRef.current?.stop();
+    }, SPEECH_SAFETY_TIMEOUT_MS);
   }
 
   return (
