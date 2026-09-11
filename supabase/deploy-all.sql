@@ -1477,4 +1477,78 @@ $$;
 revoke all on function public.get_executive_board_snapshot(uuid) from public;
 grant execute on function public.get_executive_board_snapshot(uuid) to authenticated;
 
+-- 0020: relaja llaves foraneas hacia profiles(id) a ON DELETE SET NULL para soportar Eliminar Cuenta y Datos --
+do $$
+declare
+    v_pair record;
+    v_conname text;
+begin
+    for v_pair in
+        select * from (values
+            ('accounts', 'created_by'),
+            ('receipts', 'uploaded_by'),
+            ('transactions', 'created_by'),
+            ('transactions', 'confirmed_by'),
+            ('audit_logs', 'actor_id'),
+            ('classification_hints', 'created_by'),
+            ('bills', 'created_by'),
+            ('recurring_incomes', 'created_by'),
+            ('space_members', 'invited_by'),
+            ('subscriptions', 'activated_by')
+        ) as t(tbl, col)
+    loop
+        execute format('alter table public.%I alter column %I drop not null', v_pair.tbl, v_pair.col);
+
+        select con.conname into v_conname
+        from pg_constraint con
+        where con.conrelid = format('public.%I', v_pair.tbl)::regclass
+          and con.confrelid = 'public.profiles'::regclass
+          and con.contype = 'f'
+          and con.conkey = array(
+              select attnum from pg_attribute
+              where attrelid = format('public.%I', v_pair.tbl)::regclass and attname = v_pair.col
+          );
+
+        if v_conname is not null then
+            execute format('alter table public.%I drop constraint %I', v_pair.tbl, v_conname);
+        end if;
+
+        execute format(
+            'alter table public.%I add constraint %I foreign key (%I) references public.profiles(id) on delete set null',
+            v_pair.tbl, v_pair.tbl || '_' || v_pair.col || '_fkey', v_pair.col
+        );
+    end loop;
+end $$;
+
+-- 0021: corrige violacion de llave foranea en audit_logs al borrar un espacio con datos --
+create or replace function public.write_audit_log()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_space_id uuid;
+begin
+    v_space_id := coalesce(new.space_id, old.space_id);
+
+    if not exists (select 1 from public.spaces where id = v_space_id) then
+        return coalesce(new, old);
+    end if;
+
+    insert into public.audit_logs (space_id, actor_id, entity_type, entity_id, action, old_data, new_data)
+    values (
+        v_space_id,
+        auth.uid(),
+        tg_table_name,
+        coalesce(new.id, old.id),
+        lower(tg_op),
+        case when tg_op in ('update', 'delete') then to_jsonb(old) else null end,
+        case when tg_op in ('insert', 'update') then to_jsonb(new) else null end
+    );
+
+    return coalesce(new, old);
+end;
+$$;
+
 commit;

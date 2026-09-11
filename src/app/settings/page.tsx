@@ -1,4 +1,4 @@
-import { getAccountBalances, getCategories, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
+import { getAccountBalances, getCategories, getIdentitySnapshot, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
 import { getSpaceMembers } from '@/actions/settings';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -9,8 +9,9 @@ import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SessionPreferenceInfo } from '@/components/dashboard/SessionPreferenceInfo';
 import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
 import { ImpactSummaryModal } from '@/components/dashboard/ImpactSummaryModal';
-import { IdentitySnapshotModal } from '@/components/dashboard/IdentitySnapshotModal';
+import { IdentitySnapshotCard } from '@/components/dashboard/IdentitySnapshotCard';
 import { ExportModal } from '@/components/dashboard/ExportModal';
+import { AccountDeletionSection } from '@/components/dashboard/AccountDeletionSection';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -25,12 +26,13 @@ const PLAN_LABEL: Record<PlanTier, string> = {
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances, transactionHistory, subscription, categories] = await Promise.all([
+  const [members, balances, transactionHistory, subscription, categories, identitySnapshot] = await Promise.all([
     getSpaceMembers(activeSpace.id),
     getAccountBalances(activeSpace.id),
     getTransactionHistory(activeSpace.id),
     getMySubscription(),
     getCategories(activeSpace.id),
+    getIdentitySnapshot(activeSpace.id),
   ]);
 
   const canEditSpace = activeSpace.role === 'owner' || activeSpace.role === 'admin';
@@ -49,6 +51,11 @@ export default async function SettingsPage() {
             Gestiona el nombre, los miembros y las cuentas de <span className="text-stone-300">{activeSpace.name}</span>.
           </p>
         </div>
+
+        {/* Protagonismo de "Asi te conozco": ya no es un boton escondido que
+            abre un modal -- es lo primero que se ve al entrar a Ajustes,
+            con el mismo lenguaje visual que el Resumen de Impacto. */}
+        <IdentitySnapshotCard snapshot={identitySnapshot} spaceName={activeSpace.name} />
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Nombre del espacio</h2>
@@ -78,7 +85,6 @@ export default async function SettingsPage() {
             <h2 className="text-sm font-medium text-stone-200">Historial de movimientos</h2>
             <div className="flex items-center gap-3">
               <span className="text-xs text-stone-500">Ultimos {transactionHistory.length}</span>
-              <IdentitySnapshotModal spaceId={activeSpace.id} />
               <ImpactSummaryModal spaceId={activeSpace.id} />
             </div>
           </div>
@@ -130,6 +136,18 @@ export default async function SettingsPage() {
             </p>
           </section>
         )}
+
+        {/* Privacidad y Seguridad: al final de Ajustes a proposito -- es la
+            seccion menos frecuente, nunca la primera que se ve, pero clara
+            y facil de encontrar cuando se necesita (Habeas Data, Ley 1581
+            de 2012 -- derecho a pedir la supresion de los datos). */}
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-2 text-sm font-medium text-stone-200">Privacidad y Seguridad</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Eliminar tu cuenta borra tu perfil y los espacios de los que eres unica/o integrante, de forma permanente.
+          </p>
+          <AccountDeletionSection />
+        </section>
       </div>
       <AppFooter />
     </main>
