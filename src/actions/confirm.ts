@@ -84,6 +84,7 @@ export async function confirmTransaction(payload: ConfirmTransactionDTO): Promis
       description: payload.description ?? null,
       transaction_date: payload.transaction_date,
       tags: payload.tags ?? [],
+      is_business: payload.is_business ?? false,
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
       confirmed_by: user.id,

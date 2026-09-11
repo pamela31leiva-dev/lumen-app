@@ -163,6 +163,7 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       transaction_date: extraction.transaction_date ?? new Date().toISOString(),
       created_by: user.id,
       tags: extraction.suggested_tags ?? [],
+      is_business: extraction.is_business ?? false,
     })
     .select('id')
     .single();

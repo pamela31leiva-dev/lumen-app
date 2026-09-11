@@ -1,10 +1,11 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
-import { computeActivityStreak, detectRecurringObligations, hasTransactionOnDate } from '@/domain/analytics/patterns';
-import type { ProactiveInsights, RecurringObligation } from '@/domain/types/analytics';
+import { computeActivityStreak, computeBusinessCashInsight, detectRecurringObligations, hasTransactionOnDate } from '@/domain/analytics/patterns';
+import type { BusinessCashInsight, ProactiveInsights, RecurringObligation } from '@/domain/types/analytics';
 
 const LOOKBACK_MONTHS = 12;
+const BUSINESS_LOOKBACK_DAYS = 120;
 
 /**
  * Motor de inteligencia proactiva: detecta obligaciones recurrentes vencidas
@@ -47,6 +48,41 @@ export async function getProactiveInsights(spaceId: string): Promise<ProactiveIn
   const activityStreakDays = computeActivityStreak((confirmedRows ?? []).map((row) => row.transaction_date));
 
   return { recurringObligations, hasActivityToday, activityStreakDays };
+}
+
+/**
+ * "Picos de Venta y Salud de Caja" -- Inteligencia para Microemprendimientos.
+ * Analiza solo transacciones CONFIRMADAS con is_business = true de los
+ * ultimos 120 dias (suficiente para detectar un patron semanal real sin
+ * arrastrar todo el historico). Ver computeBusinessCashInsight para los
+ * umbrales minimos de datos.
+ */
+export async function getBusinessCashInsight(spaceId: string): Promise<BusinessCashInsight | null> {
+  const supabase = await getSupabaseServerClient();
+
+  const lookbackDate = new Date();
+  lookbackDate.setUTCDate(lookbackDate.getUTCDate() - BUSINESS_LOOKBACK_DAYS);
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('type, amount_base, transaction_date')
+    .eq('space_id', spaceId)
+    .eq('status', 'confirmed')
+    .eq('is_business', true)
+    .gte('transaction_date', lookbackDate.toISOString());
+
+  if (error) {
+    console.error('Error al leer movimientos de negocio para analitica:', error);
+    return null;
+  }
+
+  return computeBusinessCashInsight(
+    (data ?? []).map((row) => ({
+      type: row.type,
+      amountBase: Number(row.amount_base),
+      transactionDate: row.transaction_date,
+    })),
+  );
 }
 
 /**

@@ -75,6 +75,14 @@ export interface AiExtractionResult {
    * solo aplica a fuentes con imagen/documento adjunto).
    */
   document_legibility_issue: string | null;
+  /**
+   * true si el texto/voz menciona explicitamente un contexto de negocio
+   * (ej. "le vendi a...", "cliente", "factura", "gasto del negocio",
+   * "inventario") en vez de un consumo personal. Etiqueta OPCIONAL: el
+   * usuario nunca tiene que declararla, la IA la detecta del lenguaje
+   * natural igual que el tipo o la categoria. false por defecto (personal).
+   */
+  is_business: boolean;
 }
 
 /** Payload para iniciar una captura (texto libre, transcripcion de voz, o documento ya subido a Storage). */
@@ -116,6 +124,7 @@ export interface ConfirmTransactionDTO {
   transaction_date: string; // ISO 8601
   receipt_id?: string | null;
   tags?: string[];
+  is_business?: boolean;
 }
 
 export type ConfirmTransactionResult =

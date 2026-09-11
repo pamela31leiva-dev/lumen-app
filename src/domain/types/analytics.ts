@@ -32,3 +32,16 @@ export interface ProactiveInsights {
   /** "Dias de Claridad": dias consecutivos (hasta hoy, o hasta ayer si hoy aun no tiene movimiento) con al menos una transaccion confirmada. */
   activityStreakDays: number;
 }
+
+/**
+ * Inteligencia para Microemprendimientos: verdades operativas directas
+ * calculadas solo sobre movimientos CONFIRMADOS marcados como negocio
+ * (is_business = true) dentro del espacio. null cuando no hay suficiente
+ * historial de negocio como para que el patron signifique algo real.
+ */
+export interface BusinessCashInsight {
+  /** Ej. "viernes y sabado" -- el/los dia(s) de la semana con mas ingresos de negocio. null si aun no hay un patron claro. */
+  peakDaysLabel: string | null;
+  /** Ingresos - egresos de negocio en lo que va del mes calendario, en moneda base. */
+  operatingNetFlow: number;
+}

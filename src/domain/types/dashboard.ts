@@ -67,6 +67,8 @@ export interface PendingTransactionSummary {
   /** Espacio donde la IA cree que este movimiento encaja mejor, si es distinto al activo. */
   suggestedSpaceId: string | null;
   suggestedSpaceName: string | null;
+  /** Naturaleza Negocio (true) vs Personal (false, default) -- ver is_business en AiExtractionResult. */
+  isBusiness: boolean;
 }
 
 /** Fila del historial de movimientos confirmados (pantalla de consulta, /settings). */

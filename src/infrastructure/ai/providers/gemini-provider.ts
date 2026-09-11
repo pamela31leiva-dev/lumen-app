@@ -20,6 +20,7 @@ const RESPONSE_SCHEMA = {
     suggested_tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     suggested_space_name: { type: SchemaType.STRING, nullable: true },
     document_legibility_issue: { type: SchemaType.STRING, nullable: true },
+    is_business: { type: SchemaType.BOOLEAN },
   },
   required: [
     'amount_original',
@@ -35,6 +36,7 @@ const RESPONSE_SCHEMA = {
     'suggested_tags',
     'suggested_space_name',
     'document_legibility_issue',
+    'is_business',
   ],
 };
 
@@ -52,6 +54,7 @@ interface GeminiExtractionSchema {
   suggested_tags: string[];
   suggested_space_name: string | null;
   document_legibility_issue: string | null;
+  is_business: boolean;
 }
 
 /**
@@ -144,6 +147,7 @@ export class GeminiExtractionProvider implements AiExtractionPort {
       suggested_tags: parsed.suggested_tags,
       suggested_space_name: parsed.suggested_space_name,
       document_legibility_issue: parsed.document_legibility_issue,
+      is_business: Boolean(parsed.is_business),
     };
   }
 

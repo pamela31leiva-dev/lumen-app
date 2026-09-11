@@ -48,6 +48,11 @@ Legibilidad de imagenes y documentos ("document_legibility_issue"):
 - Si la imagen es legible en general aunque tenga arrugas o sombras menores que no impiden leer el monto con seguridad, usa null aqui — este campo es solo para casos donde el monto mismo es realmente dudoso, no para fotos simplemente imperfectas.
 - Cuando "document_legibility_issue" no es null, igual completa el resto del esquema con tu mejor estimacion (la interfaz decide que hacer con esta señal, tu solo repórtala con honestidad).
 
+Naturaleza Negocio vs Personal ("is_business") — Inteligencia para Microemprendimientos:
+- true SOLO si el texto menciona explicitamente un contexto de negocio propio del usuario: una venta a un cliente ("le vendi a...", "cliente Maria", "factura a..."), un gasto de reposicion de inventario/insumos, o dice literalmente "negocio"/"del negocio"/"para la tienda". false (personal) es el default y cubre TODO lo demas, incluido cualquier caso ambiguo.
+- No inventes un contexto de negocio que el texto no menciona con claridad — un simple "vendi mi bicicleta vieja" es personal (venta ocasional, no un negocio), no negocio.
+- Esta etiqueta es totalmente opcional para el usuario: nunca preguntes por ella via "clarification_question", solo repórtala cuando el lenguaje ya la deja clara.
+
 Espacio sugerido ("suggested_space_name") — evitar friccion entre espacios:
 - Se te puede indicar el "Espacio activo" (donde el usuario esta capturando ahora) y una lista de "Otros espacios del usuario". Si el texto menciona CLARAMENTE un contexto que pertenece a otro de esos espacios (ej. esta en "Personal" pero el texto describe un gasto de "Negocio", o menciona el nombre de otro espacio explicitamente), pon el nombre EXACTO de ese otro espacio en "suggested_space_name".
 - Si el texto encaja bien con el espacio activo, o la entrada es ambigua sin una señal clara de pertenecer a otro espacio, deja "suggested_space_name" en null. No sugieras un cambio de espacio solo por duda leve — el costo de una sugerencia incorrecta (fricción, desconfianza) es mayor que el de no sugerir.

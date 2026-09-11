@@ -17,6 +17,7 @@ export class MockAiExtractionProvider implements AiExtractionPort {
     const amount = amountMatch ? Number(amountMatch[0].replace(/[.,](?=\d{3})/g, '')) : null;
 
     const looksLikeIncome = /\b(pago recibido|me pagaron|salario|ingreso)\b/i.test(text);
+    const looksLikeBusiness = /\b(le vendi|cliente|factura|negocio|inventario|insumos)\b/i.test(text);
     const uncertainties: string[] = [];
 
     if (amount === null) uncertainties.push('amount_original');
@@ -38,6 +39,7 @@ export class MockAiExtractionProvider implements AiExtractionPort {
       suggested_tags: [],
       suggested_space_name: null,
       document_legibility_issue: null,
+      is_business: looksLikeBusiness,
     };
   }
 }

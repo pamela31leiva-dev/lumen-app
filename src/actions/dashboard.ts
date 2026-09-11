@@ -186,7 +186,7 @@ export async function getPendingTransactions(spaceId: string): Promise<PendingTr
   const { data, error } = await supabase
     .from('transactions')
     .select(
-      'id, type, status, source, description, amount_original, currency_original, confidence_score, ai_raw_interpretation, account_id, category_id, transaction_date, receipt_id, created_at, tags',
+      'id, type, status, source, description, amount_original, currency_original, confidence_score, ai_raw_interpretation, account_id, category_id, transaction_date, receipt_id, created_at, tags, is_business',
     )
     .eq('space_id', spaceId)
     .eq('status', 'pending_confirmation')
@@ -224,6 +224,7 @@ export async function getPendingTransactions(spaceId: string): Promise<PendingTr
       null,
     suggestedSpaceName:
       (row.ai_raw_interpretation as { suggested_space_name?: string | null } | null)?.suggested_space_name ?? null,
+    isBusiness: Boolean(row.is_business),
   }));
 }
 

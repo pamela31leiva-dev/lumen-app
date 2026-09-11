@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getAccountBalances, getCategories, getMonthlyNetFlow, getPendingTransactions, getUserSpaces } from '@/actions/dashboard';
-import { getProactiveInsights } from '@/actions/analytics';
+import { getBusinessCashInsight, getProactiveInsights } from '@/actions/analytics';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -11,6 +11,7 @@ import { ActionFeed } from '@/components/dashboard/ActionFeed';
 import { CommandConsole } from '@/components/dashboard/CommandConsole';
 import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SaveSpaceBanner } from '@/components/dashboard/SaveSpaceBanner';
+import { BusinessCashCard } from '@/components/dashboard/BusinessCashCard';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -47,12 +48,13 @@ export default async function ExecutiveBoardPage() {
   const cookieSpaceId = cookieStore.get(ACTIVE_SPACE_COOKIE)?.value ?? null;
   const activeSpace = spaces.find((s) => s.id === cookieSpaceId) ?? spaces[0];
 
-  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow] = await Promise.all([
+  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow, businessCashInsight] = await Promise.all([
     getAccountBalances(activeSpace.id),
     getPendingTransactions(activeSpace.id),
     getCategories(activeSpace.id),
     getProactiveInsights(activeSpace.id),
     getMonthlyNetFlow(activeSpace.id),
+    getBusinessCashInsight(activeSpace.id),
   ]);
 
   const totalBalance = balances.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
@@ -79,6 +81,11 @@ export default async function ExecutiveBoardPage() {
           monthlyNetFlow={monthlyNetFlow}
           activityStreakDays={proactiveInsights.activityStreakDays}
         />
+
+        {/* Inteligencia para Microemprendimientos: solo existe cuando ya hay
+            suficiente historial de negocio -- Cero Ruido para espacios
+            puramente personales. */}
+        {businessCashInsight && <BusinessCashCard insight={businessCashInsight} baseCurrency={balances.baseCurrency} />}
 
         {/* b) Feed de Decisiones Inteligentes */}
         <ActionFeed

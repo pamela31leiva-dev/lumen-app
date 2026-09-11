@@ -1,4 +1,4 @@
-import type { RecurringObligation, TransactionForAnalytics } from '@/domain/types/analytics';
+import type { BusinessCashInsight, RecurringObligation, TransactionForAnalytics } from '@/domain/types/analytics';
 
 /**
  * Deteccion de recurrencias — heuristica deliberadamente simple para un
@@ -135,4 +135,62 @@ export function computeActivityStreak(transactionDates: string[], referenceDate:
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
   return streak;
+}
+
+const DAY_LABELS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+const MIN_BUSINESS_TRANSACTIONS = 3;
+const MIN_INCOME_FOR_PEAK_DAY = 5;
+const MIN_DISTINCT_DAYS_FOR_PEAK = 2;
+// Un segundo dia se incluye en el "pico" solo si esta razonablemente cerca
+// del primero -- si no, mencionarlo exagera un patron que no es tan claro.
+const SECOND_DAY_THRESHOLD_RATIO = 0.7;
+
+interface BusinessTransactionRow {
+  type: 'income' | 'expense' | 'transfer';
+  amountBase: number;
+  transactionDate: string; // ISO 8601
+}
+
+function formatPeakDaysLabel(rankedDays: { day: number; total: number }[]): string | null {
+  if (rankedDays.length === 0) return null;
+  const [first, second] = rankedDays;
+  const includeSecond = second && second.total >= first.total * SECOND_DAY_THRESHOLD_RATIO;
+  return includeSecond ? `${DAY_LABELS[first.day]} y ${DAY_LABELS[second.day]}` : DAY_LABELS[first.day];
+}
+
+/**
+ * "Picos de Venta y Salud de Caja" -- Inteligencia para Microemprendimientos.
+ * Solo opera sobre transacciones ya marcadas is_business=true y CONFIRMADAS
+ * (nunca pendientes): verdades operativas directas, no graficos contables ni
+ * alarmas. Devuelve null cuando no hay suficiente historial de negocio como
+ * para que decir algo sea mas que ruido -- silencio es mejor que un patron
+ * inventado sobre 1 o 2 movimientos.
+ */
+export function computeBusinessCashInsight(
+  transactions: BusinessTransactionRow[],
+  referenceDate: Date = new Date(),
+): BusinessCashInsight | null {
+  if (transactions.length < MIN_BUSINESS_TRANSACTIONS) return null;
+
+  const incomeRows = transactions.filter((t) => t.type === 'income');
+  const totalsByDay = new Map<number, number>();
+  for (const row of incomeRows) {
+    const day = new Date(row.transactionDate).getUTCDay();
+    totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + row.amountBase);
+  }
+
+  let peakDaysLabel: string | null = null;
+  if (incomeRows.length >= MIN_INCOME_FOR_PEAK_DAY && totalsByDay.size >= MIN_DISTINCT_DAYS_FOR_PEAK) {
+    const ranked = Array.from(totalsByDay.entries())
+      .map(([day, total]) => ({ day, total }))
+      .sort((a, b) => b.total - a.total);
+    peakDaysLabel = formatPeakDaysLabel(ranked);
+  }
+
+  const monthStart = new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1));
+  const operatingNetFlow = transactions
+    .filter((t) => new Date(t.transactionDate) >= monthStart)
+    .reduce((sum, t) => sum + (t.type === 'income' ? t.amountBase : t.type === 'expense' ? -t.amountBase : 0), 0);
+
+  return { peakDaysLabel, operatingNetFlow };
 }

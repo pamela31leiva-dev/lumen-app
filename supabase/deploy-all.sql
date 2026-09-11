@@ -946,4 +946,10 @@ begin
 end;
 $$;
 
+-- 0014: naturaleza Personal/Negocio por transaccion (Inteligencia para Microemprendimientos) --
+alter table public.transactions add column if not exists is_business boolean not null default false;
+
+drop index if exists idx_transactions_business;
+create index idx_transactions_business on public.transactions (space_id, is_business) where is_business;
+
 commit;

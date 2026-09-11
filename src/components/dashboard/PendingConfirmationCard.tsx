@@ -61,6 +61,10 @@ export function PendingConfirmationCard({
   const [date, setDate] = useState(transaction.transactionDate.slice(0, 10));
   // Simplicidad Absoluta: no mostrar moneda/tasa de cambio salvo que realmente aplique.
   const [showCurrencyDetails, setShowCurrencyDetails] = useState(transaction.currencyOriginal !== baseCurrency);
+  // Naturaleza Negocio vs Personal: la IA ya la detecto del lenguaje natural
+  // (ver is_business en AiExtractionResult); esto solo permite corregirla,
+  // nunca obliga a declararla.
+  const [isBusiness, setIsBusiness] = useState(transaction.isBusiness);
 
   const activeAccounts = accounts.filter((a) => a.isActive);
   const relevantCategories = categories.filter((c) => c.kind === (type === 'income' ? 'income' : 'expense'));
@@ -121,6 +125,7 @@ export function PendingConfirmationCard({
           .split(',')
           .map((t) => t.trim().toLowerCase())
           .filter(Boolean),
+        is_business: isBusiness,
       });
 
       if (!result.success) {
@@ -269,7 +274,14 @@ export function PendingConfirmationCard({
     <div className="animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-all duration-300 hover:border-gold/15">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-stone-100">{transaction.description ?? 'Movimiento sin descripcion'}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-stone-100">{transaction.description ?? 'Movimiento sin descripcion'}</p>
+            {isBusiness && (
+              <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-stone-400">
+                Negocio
+              </span>
+            )}
+          </div>
           <p className="amount text-xs text-stone-500">
             Detectado por IA · {transaction.amountOriginal.toLocaleString('es-CO')} {transaction.currencyOriginal}
           </p>
@@ -547,6 +559,32 @@ export function PendingConfirmationCard({
                 className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
               <p className="mt-1 text-[11px] text-stone-500">Separadas por comas. Sirven para agrupar iniciativas dentro de este espacio.</p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-stone-300">Naturaleza (opcional)</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBusiness(false)}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                    !isBusiness ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-400' : 'border-white/10 text-stone-400 hover:border-white/20',
+                  )}
+                >
+                  Personal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsBusiness(true)}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                    isBusiness ? 'border-gold/40 bg-gold-soft text-gold' : 'border-white/10 text-stone-400 hover:border-white/20',
+                  )}
+                >
+                  Negocio
+                </button>
+              </div>
             </div>
           </div>
 
