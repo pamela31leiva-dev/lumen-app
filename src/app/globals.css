@@ -58,3 +58,29 @@ body {
     animation: none;
   }
 }
+
+/* "Clarity Loop": destello sutil dorado/neutro sobre el Hero de balance al
+   confirmar cualquier movimiento -- sensacion de "cierre de ciclo mental",
+   nunca una alarma ni un efecto llamativo. Solo box-shadow (no scale/
+   transform) para no desplazar el layout ni sentirse como un salto. */
+@keyframes clarity-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(212 175 55 / 0.35);
+  }
+  65% {
+    box-shadow: 0 0 0 16px rgb(212 175 55 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(212 175 55 / 0);
+  }
+}
+
+.animate-clarity-pulse {
+  animation: clarity-pulse 0.9s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-clarity-pulse {
+    animation: none;
+  }
+}

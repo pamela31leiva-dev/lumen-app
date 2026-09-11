@@ -10,6 +10,7 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 import type { TransactionType } from '@/domain/types/capture';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
+import { pickConfirmationPhrase, TRANSACTION_CONFIRMED_EVENT } from '@/lib/clarity-loop';
 
 const TYPE_LABEL: Record<TransactionType, string> = {
   income: 'Ingreso',
@@ -97,9 +98,10 @@ export function PendingConfirmationCard({
     const transactionIso = new Date(date).toISOString();
     const finalCategoryId = type === 'transfer' ? null : categoryId || null;
 
-    // Optimista: la tarjeta pasa a su estado de "listo" ya mismo, con un
-    // mensaje generico que no depende de ninguna respuesta de red.
-    setOptimisticOutcome({ kind: 'confirm', message: 'Listo. Un pendiente menos en tu espacio.' });
+    // Optimista: la tarjeta pasa a su estado de "listo" ya mismo, con una
+    // frase de refuerzo que no depende de ninguna respuesta de red ("Clarity
+    // Loop" -- ver lib/clarity-loop.ts).
+    setOptimisticOutcome({ kind: 'confirm', message: pickConfirmationPhrase(type) });
 
     startTransition(async () => {
       const result = await confirmTransaction({
@@ -131,16 +133,25 @@ export function PendingConfirmationCard({
 
       router.refresh();
 
-      // El insight es una mejora sobre el mensaje generico, no un requisito
-      // para que la tarjeta reaccione -- si tarda o falla, el mensaje
-      // generico ya mostrado sigue siendo perfectamente valido.
+      // Destello dorado sobre el Hero de balance -- "cierre de ciclo mental"
+      // al confirmar. window.dispatchEvent porque NetWorthHero vive en otra
+      // rama del arbol (no es hijo de esta tarjeta), y esta es la unica señal
+      // efimera que necesita cruzar esa distancia.
+      window.dispatchEvent(new CustomEvent(TRANSACTION_CONFIRMED_EVENT));
+
+      // El insight es una mejora sobre la frase de refuerzo, no un requisito
+      // para que la tarjeta reaccione -- si tarda, falla, o no hay nada mas
+      // informativo que decir, la frase ya mostrada se queda tal cual.
       getConfirmationInsight({
         spaceId,
         type,
         categoryId: finalCategoryId,
         transactionDate: transactionIso,
       })
-        .then((message) => setOptimisticOutcome((current) => (current?.kind === 'confirm' ? { ...current, message } : current)))
+        .then((message) => {
+          if (!message) return;
+          setOptimisticOutcome((current) => (current?.kind === 'confirm' ? { ...current, message } : current));
+        })
         .catch(() => {});
     });
   }

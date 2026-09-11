@@ -112,11 +112,13 @@ export function hasTransactionOnDate(transactionDates: string[], referenceDate: 
 }
 
 /**
- * "Racha de Conciencia": dias consecutivos con al menos un movimiento
+ * "Dias de Claridad": dias consecutivos con al menos un movimiento
  * confirmado, contando hacia atras desde hoy. Si hoy todavia no tiene
  * ningun movimiento, cuenta desde ayer -- de otro modo la racha se veria en
  * cero cada mañana antes de que la persona alcance a registrar algo, lo que
- * se sentiria como un castigo en vez de un reconocimiento del habito.
+ * se sentiria como un castigo en vez de un reconocimiento del habito. Sin
+ * penalizacion visible por un dia saltado: simplemente no crece, nunca se
+ * muestra en rojo ni se resetea con aviso.
  */
 export function computeActivityStreak(transactionDates: string[], referenceDate: Date = new Date()): number {
   const activeDays = new Set(transactionDates.map((iso) => iso.slice(0, 10)));

@@ -9,9 +9,11 @@ interface DailyCheckInBubbleProps {
 
 type Window = 'midday' | 'evening';
 
+// Texto definitivo de los recordatorios de Claridad: directo, sin metaforas
+// ni culpa -- solo la accion financiera (ver feedback del 2026-09-11).
 const WINDOW_COPY: Record<Window, string> = {
-  midday: 'Hola 👋 ¿Hubo cafecito, almuerzo o algun movimiento que quieras sumar a Lumen? ¡Pon al dia tu espacio en un segundo!',
-  evening: '¿Que tal va el dia? Si tuviste ingresos o egresos hoy, registralos ahora para mantener tu liquidez clara.',
+  midday: '¿Hubo movimientos en la mañana? Registra ingresos o egresos ahora.',
+  evening: '¿Cuentas cerradas? Pon tu espacio al dia antes de descansar.',
 };
 
 function todayKey() {

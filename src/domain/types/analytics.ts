@@ -29,6 +29,6 @@ export interface RecurringObligation {
 export interface ProactiveInsights {
   recurringObligations: RecurringObligation[];
   hasActivityToday: boolean;
-  /** Dias consecutivos (hasta hoy, o hasta ayer si hoy aun no tiene movimiento) con al menos una transaccion confirmada. */
+  /** "Dias de Claridad": dias consecutivos (hasta hoy, o hasta ayer si hoy aun no tiene movimiento) con al menos una transaccion confirmada. */
   activityStreakDays: number;
 }

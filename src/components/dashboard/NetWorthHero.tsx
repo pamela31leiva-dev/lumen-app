@@ -1,13 +1,19 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { cn, formatMoney } from '@/lib/utils';
+import { TRANSACTION_CONFIRMED_EVENT } from '@/lib/clarity-loop';
 
 interface NetWorthHeroProps {
   baseCurrency: string;
   totalBalance: number;
   hasRealAssets: boolean;
   monthlyNetFlow: number;
-  /** Dias consecutivos con al menos un movimiento confirmado ("Racha de Conciencia"). */
+  /** Dias consecutivos con al menos un movimiento confirmado ("Dias de Claridad"). */
   activityStreakDays: number;
 }
+
+const PULSE_DURATION_MS = 900;
 
 /**
  * Bloque (a) del Executive Action Board: el Balance Maestro. Numero grande,
@@ -21,8 +27,26 @@ interface NetWorthHeroProps {
  * realidad solo falta decirle a la app cuanto dinero real hay. En ese caso
  * se muestra "Liquidez del Mes" (el flujo neto de este mes calendario, que
  * se resetea cada mes) con tono neutro en vez de alarma roja.
+ *
+ * "Clarity Loop": escucha TRANSACTION_CONFIRMED_EVENT (disparado desde
+ * PendingConfirmationCard, en otra rama del arbol) para un destello dorado
+ * sutil -- la sensacion de "cierre de ciclo mental" al confirmar cualquier
+ * movimiento. Por eso este componente es 'use client' aunque sus props ya
+ * vienen resueltas del servidor.
  */
 export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthlyNetFlow, activityStreakDays }: NetWorthHeroProps) {
+  const [isPulsing, setIsPulsing] = useState(false);
+
+  useEffect(() => {
+    function handleConfirmed() {
+      setIsPulsing(true);
+      const timer = setTimeout(() => setIsPulsing(false), PULSE_DURATION_MS);
+      return () => clearTimeout(timer);
+    }
+    window.addEventListener(TRANSACTION_CONFIRMED_EVENT, handleConfirmed);
+    return () => window.removeEventListener(TRANSACTION_CONFIRMED_EVENT, handleConfirmed);
+  }, []);
+
   const label = hasRealAssets ? 'Patrimonio Neto' : 'Liquidez del Mes';
   const value = hasRealAssets ? totalBalance : monthlyNetFlow;
   const isNegative = value < 0;
@@ -33,7 +57,12 @@ export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthl
   const amountColorClass = hasRealAssets && isNegative ? 'text-red-400' : 'text-stone-50';
 
   return (
-    <section className="rounded-xl border border-white/10 bg-elevated p-6 transition-colors hover:border-gold/15">
+    <section
+      className={cn(
+        'rounded-xl border border-white/10 bg-elevated p-6 transition-colors hover:border-gold/15',
+        isPulsing && 'animate-clarity-pulse',
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500">Trayectoria y Control</p>
@@ -41,8 +70,8 @@ export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthl
           <p className={cn('amount mt-2 text-4xl font-bold', amountColorClass)}>{formatMoney(value, baseCurrency)}</p>
           {activityStreakDays >= 2 && (
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-stone-400">
-              <span aria-hidden>🛡️</span>
-              {activityStreakDays} dias protegiendo tu liquidez
+              <span aria-hidden>✦</span>
+              {activityStreakDays} dias de claridad
             </p>
           )}
           {!hasRealAssets && (
