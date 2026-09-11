@@ -11,34 +11,13 @@ import type { TransactionType } from '@/domain/types/capture';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
 import { pickConfirmationPhrase, TRANSACTION_CONFIRMED_EVENT } from '@/lib/clarity-loop';
+import { FOLDER_LABEL, folderOf, folderToColumns, type Folder } from '@/domain/folders';
 
 const TYPE_LABEL: Record<TransactionType, string> = {
   income: 'Ingreso',
   expense: 'Gasto',
   transfer: 'Transferencia',
 };
-
-/**
- * "Carpeta" contextual unificada para la interfaz: Negocio viene de
- * is_business (ya gobierna la Inteligencia de Negocio y la puerta Pro, ver
- * 0014/0015), las otras tres de life_domain (0016). Se combinan en un solo
- * selector de 4 opciones porque para quien registra son la misma decision
- * ("¿esto en que carpeta va?"), aunque en la base de datos sean dos columnas
- * separadas por razones de compatibilidad con lo ya construido.
- */
-type Folder = 'personal' | 'familiar' | 'salud' | 'negocio';
-
-const FOLDER_LABEL: Record<Folder, string> = {
-  personal: 'Personal',
-  familiar: 'Familiar',
-  salud: 'Salud',
-  negocio: 'Negocio',
-};
-
-function folderFromTransaction(t: PendingTransactionSummary): Folder {
-  if (t.isBusiness) return 'negocio';
-  return t.lifeDomain ?? 'personal';
-}
 
 interface PendingConfirmationCardProps {
   transaction: PendingTransactionSummary;
@@ -86,7 +65,7 @@ export function PendingConfirmationCard({
   // Carpeta contextual (Personal/Familiar/Salud/Negocio): la IA ya la
   // detecto del lenguaje natural; esto solo permite corregirla, nunca obliga
   // a declararla.
-  const [folder, setFolder] = useState<Folder>(folderFromTransaction(transaction));
+  const [folder, setFolder] = useState<Folder>(folderOf(transaction));
 
   const activeAccounts = accounts.filter((a) => a.isActive);
   const relevantCategories = categories.filter((c) => c.kind === (type === 'income' ? 'income' : 'expense'));
@@ -147,8 +126,7 @@ export function PendingConfirmationCard({
           .split(',')
           .map((t) => t.trim().toLowerCase())
           .filter(Boolean),
-        is_business: folder === 'negocio',
-        life_domain: folder === 'negocio' || folder === 'personal' ? null : folder,
+        ...folderToColumns(folder),
       });
 
       if (!result.success) {

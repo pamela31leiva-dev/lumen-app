@@ -51,6 +51,13 @@ export function CashFlowProjectionCard({ projection, baseCurrency }: CashFlowPro
             <li key={event.key} className="flex items-center justify-between gap-3 text-xs text-stone-400">
               <span className="min-w-0 truncate">
                 <span className="text-stone-300">{event.description}</span> · {WEEKDAY_FORMAT.format(new Date(event.nextExpectedDate))}
+                {/* Ingreso Fijo (0019): registrado explicitamente, no inferido del historico -- se diferencia
+                    de un patron detectado para que nunca se confundan (uno es certeza, el otro una heuristica). */}
+                {event.source === 'fixed' && (
+                  <span className="ml-1.5 rounded-full bg-emerald-600/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-400">
+                    Fijo
+                  </span>
+                )}
               </span>
               <span className={cn('amount shrink-0', event.type === 'income' ? 'text-growth' : 'text-stone-500')}>
                 {formatMoney(event.averageAmount, baseCurrency)}

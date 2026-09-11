@@ -17,6 +17,7 @@ import { CashFlowProjectionCard } from '@/components/dashboard/CashFlowProjectio
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { RealtimeSpaceSync } from '@/components/dashboard/RealtimeSpaceSync';
 import { HistoricalPanoramaCard } from '@/components/dashboard/HistoricalPanoramaCard';
+import { RecurringIncomesCard } from '@/components/dashboard/RecurringIncomesCard';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -73,6 +74,7 @@ export default async function ExecutiveBoardPage() {
     proactiveInsights,
     businessCashInsight,
     cashFlowProjection,
+    recurringIncomes,
   } = await getExecutiveBoardSnapshot(activeSpace.id, businessAnalyticsLocked);
 
   return (
@@ -157,6 +159,11 @@ export default async function ExecutiveBoardPage() {
         {yearlyOverview.length >= 2 && (
           <HistoricalPanoramaCard years={yearlyOverview} baseCurrency={balances.baseCurrency} />
         )}
+
+        {/* Ingresos Recurrentes con Ajuste Anual (0019): pension, salario u
+            otro flujo fijo, registrado una vez -- Lumen lo proyecta solo mes
+            a mes (ver generate_due_recurring_incomes). */}
+        <RecurringIncomesCard spaceId={activeSpace.id} baseCurrency={balances.baseCurrency} recurringIncomes={recurringIncomes} />
       </div>
     </main>
   );

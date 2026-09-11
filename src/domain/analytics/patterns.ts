@@ -187,6 +187,7 @@ export function detectRecurringCashEvents(
       type,
       averageAmount,
       nextExpectedDate: nextExpected.toISOString(),
+      source: 'detected',
     });
   }
 

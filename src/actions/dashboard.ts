@@ -243,7 +243,7 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
   const { data, error } = await supabase
     .from('transactions')
     .select(
-      'id, type, description, amount_original, currency_original, transaction_date, tags, category_id, category:categories(name)',
+      'id, type, description, amount_original, currency_original, transaction_date, tags, category_id, category:categories(name), is_business, life_domain',
     )
     .eq('space_id', spaceId)
     .eq('status', 'confirmed')
@@ -260,6 +260,8 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
         tags: string[] | null;
         category_id: string | null;
         category: { name: string } | null;
+        is_business: boolean;
+        life_domain: 'personal' | 'familiar' | 'salud' | null;
       }[]
     >();
 
@@ -278,6 +280,8 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
     categoryName: row.category?.name ?? null,
     transactionDate: row.transaction_date,
     tags: Array.isArray(row.tags) ? row.tags : [],
+    isBusiness: Boolean(row.is_business),
+    lifeDomain: row.life_domain,
   }));
 }
 

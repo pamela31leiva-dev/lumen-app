@@ -18,10 +18,12 @@ import type {
   SpaceMemberSummary,
   TransactionHistoryItem,
 } from '@/domain/types/dashboard';
-import type { BusinessCashInsight, CashFlowProjection, ProactiveInsights } from '@/domain/types/analytics';
+import type { BusinessCashInsight, CashFlowProjection, ProactiveInsights, RecurringCashEvent } from '@/domain/types/analytics';
 import type { TransactionType } from '@/domain/types/capture';
 import type { YearlySummary } from '@/actions/history';
 import type { BillSummary } from '@/actions/bills';
+import { folderOf } from '@/domain/folders';
+import type { RecurringIncomeSummary } from '@/actions/recurring-incomes';
 
 interface SnapshotAccountRow {
   account_id: string;
@@ -86,6 +88,8 @@ interface SnapshotRecentActivityRow {
   tags: string[] | null;
   category_id: string | null;
   category_name: string | null;
+  is_business: boolean;
+  life_domain: 'personal' | 'familiar' | 'salud' | null;
 }
 
 interface SnapshotBillRow {
@@ -116,6 +120,19 @@ interface SnapshotBusinessRow {
   transaction_date: string;
 }
 
+interface SnapshotRecurringIncomeRow {
+  id: string;
+  description: string;
+  amount: number;
+  currency: string;
+  is_business: boolean;
+  life_domain: 'personal' | 'familiar' | 'salud' | null;
+  annual_adjustment_percent: number | null;
+  adjustment_month: number;
+  is_active: boolean;
+  last_generated_period: string | null;
+}
+
 interface ExecutiveBoardSnapshotJson {
   space: { base_currency: string } | null;
   accounts: SnapshotAccountRow[];
@@ -129,6 +146,17 @@ interface ExecutiveBoardSnapshotJson {
   today_activity_dates: string[];
   pattern_rows: SnapshotPatternRow[];
   business_rows: SnapshotBusinessRow[];
+  recurring_incomes: SnapshotRecurringIncomeRow[];
+}
+
+function normalizeDescriptionKey(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Primer dia del mes siguiente al ultimo ya generado -- la proxima vez que este ingreso fijo caera en la proyeccion de 30 dias. */
+function nextExpectedFromRecurringIncome(lastGeneratedPeriod: string | null): string {
+  const base = lastGeneratedPeriod ? new Date(lastGeneratedPeriod) : new Date();
+  return new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 1)).toISOString();
 }
 
 export interface ExecutiveBoardSnapshot {
@@ -145,6 +173,7 @@ export interface ExecutiveBoardSnapshot {
   proactiveInsights: ProactiveInsights;
   businessCashInsight: BusinessCashInsight | null;
   cashFlowProjection: CashFlowProjection;
+  recurringIncomes: RecurringIncomeSummary[];
 }
 
 function billDaysUntilDue(dueDate: string): number {
@@ -173,6 +202,16 @@ export async function getExecutiveBoardSnapshot(
 ): Promise<ExecutiveBoardSnapshot> {
   const supabase = await getSupabaseServerClient();
 
+  // Ingresos Recurrentes (0019): genera la transaccion pending_confirmation
+  // del mes para cada ingreso fijo activo que aun no la tenga, ANTES de leer
+  // el snapshot -- asi el pendiente recien creado ya aparece en la misma
+  // carga, sin esperar a un segundo refresh. Es una escritura, por eso vive
+  // fuera de la funcion STABLE del snapshot.
+  const { error: generateError } = await supabase.rpc('generate_due_recurring_incomes', { p_space_id: spaceId });
+  if (generateError) {
+    console.error('Error al generar los ingresos recurrentes del mes:', generateError);
+  }
+
   const { data: rawData, error } = await supabase.rpc('get_executive_board_snapshot', { p_space_id: spaceId });
   const data = rawData as ExecutiveBoardSnapshotJson | null;
 
@@ -192,6 +231,7 @@ export async function getExecutiveBoardSnapshot(
       proactiveInsights: { recurringObligations: [], hasActivityToday: false, activityStreakDays: 0 },
       businessCashInsight: null,
       cashFlowProjection: { currentBalance: 0, projectedBalance30d: 0, upcomingEvents: [], lowestPoint: null },
+      recurringIncomes: [],
     };
   }
 
@@ -266,6 +306,20 @@ export async function getExecutiveBoardSnapshot(
     categoryName: row.category_name,
     transactionDate: row.transaction_date,
     tags: Array.isArray(row.tags) ? row.tags : [],
+    isBusiness: Boolean(row.is_business),
+    lifeDomain: row.life_domain,
+  }));
+
+  const recurringIncomes: RecurringIncomeSummary[] = (data.recurring_incomes ?? []).map((row) => ({
+    id: row.id,
+    description: row.description,
+    amount: Number(row.amount),
+    currency: row.currency,
+    folder: folderOf({ isBusiness: row.is_business, lifeDomain: row.life_domain }),
+    annualAdjustmentPercent: row.annual_adjustment_percent !== null ? Number(row.annual_adjustment_percent) : null,
+    adjustmentMonth: row.adjustment_month,
+    isActive: row.is_active,
+    lastGeneratedPeriod: row.last_generated_period,
   }));
 
   const bills: BillSummary[] = data.bills.map((row) => ({
@@ -314,8 +368,30 @@ export async function getExecutiveBoardSnapshot(
       })),
     );
 
-    const recurringEvents = detectRecurringCashEvents(patternRows);
-    cashFlowProjection = computeCashFlowProjection(totalBalance, recurringEvents);
+    // Ingresos Fijos (0019): se modelan como eventos 'fixed' garantizados en
+    // vez de esperar a que detectRecurringCashEvents los infiera del
+    // historico (2+ meses ya confirmados) -- un salario recien registrado
+    // debe verse en la proyeccion desde el primer mes, no despues. Si el
+    // motor de patrones ya detecto el mismo ingreso por descripcion (una vez
+    // que el usuario confirmo un par de meses), se descarta la version
+    // 'detected' duplicada para no mostrarlo dos veces.
+    const fixedIncomeEvents: RecurringCashEvent[] = (data.recurring_incomes ?? [])
+      .filter((row) => row.is_active)
+      .map((row) => ({
+        key: `fixed:${row.id}`,
+        description: row.description,
+        type: 'income',
+        averageAmount: Number(row.amount),
+        nextExpectedDate: nextExpectedFromRecurringIncome(row.last_generated_period),
+        source: 'fixed',
+      }));
+    const fixedDescriptionKeys = new Set(fixedIncomeEvents.map((e) => normalizeDescriptionKey(e.description)));
+
+    const detectedEvents = detectRecurringCashEvents(patternRows).filter(
+      (e) => !fixedDescriptionKeys.has(normalizeDescriptionKey(e.description)),
+    );
+
+    cashFlowProjection = computeCashFlowProjection(totalBalance, [...fixedIncomeEvents, ...detectedEvents]);
   }
 
   return {
@@ -332,5 +408,6 @@ export async function getExecutiveBoardSnapshot(
     proactiveInsights,
     businessCashInsight,
     cashFlowProjection,
+    recurringIncomes,
   };
 }

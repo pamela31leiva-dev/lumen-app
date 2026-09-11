@@ -54,6 +54,15 @@ export interface RecurringCashEvent {
   averageAmount: number;
   /** Proxima fecha en la que se espera este evento, ISO 8601. */
   nextExpectedDate: string;
+  /**
+   * 'fixed' = ingreso registrado explicitamente por el usuario (ver
+   * recurring_incomes, 0019) -- confiable desde el primer mes, sin esperar
+   * 2+ ocurrencias historicas. 'detected' = inferido por heuristica sobre el
+   * historico confirmado (detectRecurringCashEvents). La interfaz distingue
+   * ambos para que un ingreso fijo nunca se confunda con un gasto esporadico
+   * que solo coincidio dos veces por casualidad.
+   */
+  source: 'fixed' | 'detected';
 }
 
 /** Un evento recurrente ya ubicado dentro de la ventana de proyeccion, con el saldo acumulado hasta ese punto. */

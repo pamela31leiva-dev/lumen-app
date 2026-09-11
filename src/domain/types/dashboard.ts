@@ -86,6 +86,10 @@ export interface TransactionHistoryItem {
   categoryName: string | null;
   transactionDate: string;
   tags: string[];
+  /** Naturaleza Negocio (true) vs Personal (false, default) -- ver is_business en AiExtractionResult. */
+  isBusiness: boolean;
+  /** Carpeta dentro de lo no-negocio: Personal (null)/Familiar/Salud -- ver life_domain en AiExtractionResult. */
+  lifeDomain: 'personal' | 'familiar' | 'salud' | null;
 }
 
 /** Una entrada del ranking "top categoria" del Resumen de Impacto. */
