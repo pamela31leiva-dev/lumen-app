@@ -40,6 +40,11 @@ export class MockAiExtractionProvider implements AiExtractionPort {
       suggested_space_name: null,
       document_legibility_issue: null,
       is_business: looksLikeBusiness,
+      life_domain: /\b(medic|doctor|eps|drogueria|farmacia|cita|examen)\b/i.test(text)
+        ? 'salud'
+        : /\b(hijo|hija|esposo|esposa|familia)\b/i.test(text)
+          ? 'familiar'
+          : null,
     };
   }
 }

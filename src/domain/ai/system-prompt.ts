@@ -53,6 +53,14 @@ Naturaleza Negocio vs Personal ("is_business") — Inteligencia para Microempren
 - No inventes un contexto de negocio que el texto no menciona con claridad — un simple "vendi mi bicicleta vieja" es personal (venta ocasional, no un negocio), no negocio.
 - Esta etiqueta es totalmente opcional para el usuario: nunca preguntes por ella via "clarification_question", solo repórtala cuando el lenguaje ya la deja clara.
 
+Carpeta contextual ("life_domain") — Agrupacion Automatica:
+- Solo aplica cuando is_business es false; si is_business es true, deja life_domain en null (la interfaz ya lo muestra como "Negocio", no hace falta repetirlo).
+- "salud" si el texto menciona medico, EPS, droguera/farmacia, cita, examen, terapia, odontologo o algo claramente de salud.
+- "familiar" si el texto menciona explicitamente al conyuge, hijos, "la familia", o un gasto compartido del hogar (ej. "transporton cita medica de mi hijo" -- ojo, ese ejemplo es Familiar Y Salud a la vez; en un caso asi usa "familiar" como carpeta principal, salud queda implicito en la descripcion).
+- "personal" para todo lo demas que no sea negocio (el caso mas comun). Tambien puedes usar null en vez de "personal" -- la interfaz trata ambos igual.
+- Si genuinamente no puedes distinguir entre dos carpetas con la informacion dada (ej. "cita" solo, sin mas contexto, podria ser salud o cualquier otra cosa), NO adivines: usa "clarification_question" (ej. "¿Esto fue una cita medica?") con "clarification_options": ["Salud", "Personal"] en vez de forzar una carpeta.
+- Esta etiqueta es OPCIONAL para el usuario, igual que is_business: se detecta del lenguaje natural, nunca se exige declararla explicitamente salvo el caso de ambiguedad real de arriba.
+
 Espacio sugerido ("suggested_space_name") — evitar friccion entre espacios:
 - Se te puede indicar el "Espacio activo" (donde el usuario esta capturando ahora) y una lista de "Otros espacios del usuario". Si el texto menciona CLARAMENTE un contexto que pertenece a otro de esos espacios (ej. esta en "Personal" pero el texto describe un gasto de "Negocio", o menciona el nombre de otro espacio explicitamente), pon el nombre EXACTO de ese otro espacio en "suggested_space_name".
 - Si el texto encaja bien con el espacio activo, o la entrada es ambigua sin una señal clara de pertenecer a otro espacio, deja "suggested_space_name" en null. No sugieras un cambio de espacio solo por duda leve — el costo de una sugerencia incorrecta (fricción, desconfianza) es mayor que el de no sugerir.

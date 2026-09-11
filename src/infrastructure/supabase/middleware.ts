@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { getValidatedSupabaseEnv } from '@/infrastructure/supabase/env';
 
-const PRIVATE_PREFIXES = ['/executive-board', '/settings', '/privacy'];
+const PRIVATE_PREFIXES = ['/executive-board', '/overview', '/settings', '/privacy'];
 const PUBLIC_AUTH_PREFIXES = ['/login', '/register'];
 const ACCEPT_TERMS_PATH = '/accept-terms';
 // /privacy queda exento del gate de consentimiento a proposito: la persona

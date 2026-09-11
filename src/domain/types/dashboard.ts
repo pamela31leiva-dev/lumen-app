@@ -71,6 +71,8 @@ export interface PendingTransactionSummary {
   suggestedSpaceName: string | null;
   /** Naturaleza Negocio (true) vs Personal (false, default) -- ver is_business en AiExtractionResult. */
   isBusiness: boolean;
+  /** Carpeta dentro de lo no-negocio: Personal (null)/Familiar/Salud -- ver life_domain en AiExtractionResult. */
+  lifeDomain: 'personal' | 'familiar' | 'salud' | null;
 }
 
 /** Fila del historial de movimientos confirmados (pantalla de consulta, /settings). */

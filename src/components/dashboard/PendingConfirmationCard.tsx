@@ -18,6 +18,28 @@ const TYPE_LABEL: Record<TransactionType, string> = {
   transfer: 'Transferencia',
 };
 
+/**
+ * "Carpeta" contextual unificada para la interfaz: Negocio viene de
+ * is_business (ya gobierna la Inteligencia de Negocio y la puerta Pro, ver
+ * 0014/0015), las otras tres de life_domain (0016). Se combinan en un solo
+ * selector de 4 opciones porque para quien registra son la misma decision
+ * ("¿esto en que carpeta va?"), aunque en la base de datos sean dos columnas
+ * separadas por razones de compatibilidad con lo ya construido.
+ */
+type Folder = 'personal' | 'familiar' | 'salud' | 'negocio';
+
+const FOLDER_LABEL: Record<Folder, string> = {
+  personal: 'Personal',
+  familiar: 'Familiar',
+  salud: 'Salud',
+  negocio: 'Negocio',
+};
+
+function folderFromTransaction(t: PendingTransactionSummary): Folder {
+  if (t.isBusiness) return 'negocio';
+  return t.lifeDomain ?? 'personal';
+}
+
 interface PendingConfirmationCardProps {
   transaction: PendingTransactionSummary;
   spaceId: string;
@@ -61,10 +83,10 @@ export function PendingConfirmationCard({
   const [date, setDate] = useState(transaction.transactionDate.slice(0, 10));
   // Simplicidad Absoluta: no mostrar moneda/tasa de cambio salvo que realmente aplique.
   const [showCurrencyDetails, setShowCurrencyDetails] = useState(transaction.currencyOriginal !== baseCurrency);
-  // Naturaleza Negocio vs Personal: la IA ya la detecto del lenguaje natural
-  // (ver is_business en AiExtractionResult); esto solo permite corregirla,
-  // nunca obliga a declararla.
-  const [isBusiness, setIsBusiness] = useState(transaction.isBusiness);
+  // Carpeta contextual (Personal/Familiar/Salud/Negocio): la IA ya la
+  // detecto del lenguaje natural; esto solo permite corregirla, nunca obliga
+  // a declararla.
+  const [folder, setFolder] = useState<Folder>(folderFromTransaction(transaction));
 
   const activeAccounts = accounts.filter((a) => a.isActive);
   const relevantCategories = categories.filter((c) => c.kind === (type === 'income' ? 'income' : 'expense'));
@@ -125,7 +147,8 @@ export function PendingConfirmationCard({
           .split(',')
           .map((t) => t.trim().toLowerCase())
           .filter(Boolean),
-        is_business: isBusiness,
+        is_business: folder === 'negocio',
+        life_domain: folder === 'negocio' || folder === 'personal' ? null : folder,
       });
 
       if (!result.success) {
@@ -276,9 +299,9 @@ export function PendingConfirmationCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-stone-100">{transaction.description ?? 'Movimiento sin descripcion'}</p>
-            {isBusiness && (
+            {folder !== 'personal' && (
               <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-stone-400">
-                Negocio
+                {FOLDER_LABEL[folder]}
               </span>
             )}
           </div>
@@ -562,28 +585,25 @@ export function PendingConfirmationCard({
             </div>
 
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-stone-300">Naturaleza (opcional)</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsBusiness(false)}
-                  className={cn(
-                    'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
-                    !isBusiness ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-400' : 'border-white/10 text-stone-400 hover:border-white/20',
-                  )}
-                >
-                  Personal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsBusiness(true)}
-                  className={cn(
-                    'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
-                    isBusiness ? 'border-gold/40 bg-gold-soft text-gold' : 'border-white/10 text-stone-400 hover:border-white/20',
-                  )}
-                >
-                  Negocio
-                </button>
+              <label className="mb-1 block text-xs font-medium text-stone-300">Carpeta (opcional)</label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(FOLDER_LABEL) as Folder[]).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFolder(option)}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                      folder === option
+                        ? option === 'negocio'
+                          ? 'border-gold/40 bg-gold-soft text-gold'
+                          : 'border-emerald-600/40 bg-emerald-600/10 text-emerald-400'
+                        : 'border-white/10 text-stone-400 hover:border-white/20',
+                    )}
+                  >
+                    {FOLDER_LABEL[option]}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

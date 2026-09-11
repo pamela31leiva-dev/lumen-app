@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getAccountBalances, getCategories, getMonthlyNetFlow, getPendingTransactions, getUserSpaces } from '@/actions/dashboard';
+import { getAccountBalances, getCategories, getMonthlyNetFlow, getPendingTransactions, getTransactionHistory, getUserSpaces } from '@/actions/dashboard';
 import { getBusinessCashInsight, getCashFlowProjection, getProactiveInsights } from '@/actions/analytics';
 import { getSpaceMembers } from '@/actions/settings';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
@@ -15,6 +15,7 @@ import { SaveSpaceBanner } from '@/components/dashboard/SaveSpaceBanner';
 import { BusinessCashCard } from '@/components/dashboard/BusinessCashCard';
 import { BusinessProUpsell } from '@/components/dashboard/BusinessProUpsell';
 import { CashFlowProjectionCard } from '@/components/dashboard/CashFlowProjectionCard';
+import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { RealtimeSpaceSync } from '@/components/dashboard/RealtimeSpaceSync';
 
 /**
@@ -52,14 +53,16 @@ export default async function ExecutiveBoardPage() {
   const cookieSpaceId = cookieStore.get(ACTIVE_SPACE_COOKIE)?.value ?? null;
   const activeSpace = spaces.find((s) => s.id === cookieSpaceId) ?? spaces[0];
 
-  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow, spaceMembers] = await Promise.all([
-    getAccountBalances(activeSpace.id),
-    getPendingTransactions(activeSpace.id),
-    getCategories(activeSpace.id),
-    getProactiveInsights(activeSpace.id),
-    getMonthlyNetFlow(activeSpace.id),
-    getSpaceMembers(activeSpace.id),
-  ]);
+  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow, spaceMembers, recentActivity] =
+    await Promise.all([
+      getAccountBalances(activeSpace.id),
+      getPendingTransactions(activeSpace.id),
+      getCategories(activeSpace.id),
+      getProactiveInsights(activeSpace.id),
+      getMonthlyNetFlow(activeSpace.id),
+      getSpaceMembers(activeSpace.id),
+      getTransactionHistory(activeSpace.id, 5),
+    ]);
 
   const totalBalance = balances.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
@@ -99,6 +102,10 @@ export default async function ExecutiveBoardPage() {
           monthlyNetFlow={monthlyNetFlow}
           activityStreakDays={proactiveInsights.activityStreakDays}
         />
+
+        {/* "Concepto y Destino como Protagonistas": nunca solo el numero
+            agregado -- justo debajo, los movimientos reales que lo explican. */}
+        <RecentActivityCard items={recentActivity} />
 
         {/* Inteligencia para Microemprendimientos + Proyeccion de Caja:
             solo existen cuando ya hay suficiente historial -- Cero Ruido

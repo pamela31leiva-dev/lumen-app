@@ -128,6 +128,7 @@ export class AnthropicExtractionProvider implements AiExtractionPort {
       suggested_space_name: null,
       document_legibility_issue: null,
       is_business: false,
+      life_domain: null,
     };
   }
 }

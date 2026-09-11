@@ -83,6 +83,17 @@ export interface AiExtractionResult {
    * natural igual que el tipo o la categoria. false por defecto (personal).
    */
   is_business: boolean;
+  /**
+   * "Carpeta" contextual dentro de lo que NO es negocio (is_business=false):
+   * Personal (default, usar null), Familiar (menciona conyuge/hijos/familia)
+   * o Salud (menciona medico, EPS, droguerma, cita, examen). Cuando
+   * is_business=true esta carpeta se ignora en la interfaz (la carpeta
+   * mostrada es siempre "Negocio"). Igual que is_business, es OPCIONAL: la
+   * IA la detecta del lenguaje, nunca se le exige al usuario declararla. Si
+   * hay duda real entre dos carpetas (ej. "consulta" podria ser Salud o
+   * Familiar), usa clarification_question en vez de adivinar.
+   */
+  life_domain: 'personal' | 'familiar' | 'salud' | null;
 }
 
 /** Payload para iniciar una captura (texto libre, transcripcion de voz, o documento ya subido a Storage). */
@@ -125,6 +136,7 @@ export interface ConfirmTransactionDTO {
   receipt_id?: string | null;
   tags?: string[];
   is_business?: boolean;
+  life_domain?: 'personal' | 'familiar' | 'salud' | null;
 }
 
 export type ConfirmTransactionResult =

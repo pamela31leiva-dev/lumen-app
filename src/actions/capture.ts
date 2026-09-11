@@ -164,6 +164,7 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       created_by: user.id,
       tags: extraction.suggested_tags ?? [],
       is_business: extraction.is_business ?? false,
+      life_domain: extraction.is_business ? null : extraction.life_domain ?? null,
     })
     .select('id')
     .single();

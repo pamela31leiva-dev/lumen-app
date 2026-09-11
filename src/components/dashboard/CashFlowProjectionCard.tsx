@@ -50,10 +50,9 @@ export function CashFlowProjectionCard({ projection, baseCurrency }: CashFlowPro
           {upcomingEvents.slice(0, 5).map((event) => (
             <li key={event.key} className="flex items-center justify-between gap-3 text-xs text-stone-400">
               <span className="min-w-0 truncate">
-                {WEEKDAY_FORMAT.format(new Date(event.nextExpectedDate))} · {event.description}
+                <span className="text-stone-300">{event.description}</span> · {WEEKDAY_FORMAT.format(new Date(event.nextExpectedDate))}
               </span>
-              <span className={cn('amount shrink-0', event.type === 'income' ? 'text-stone-300' : 'text-stone-500')}>
-                {event.type === 'income' ? '+' : '-'}
+              <span className={cn('amount shrink-0', event.type === 'income' ? 'text-growth' : 'text-stone-500')}>
                 {formatMoney(event.averageAmount, baseCurrency)}
               </span>
             </li>

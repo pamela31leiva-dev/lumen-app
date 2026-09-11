@@ -15,6 +15,19 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: '/overview',
+    label: 'Global',
+    key: 'overview' as const,
+    icon: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    ),
+  },
+  {
     href: '/settings',
     label: 'Ajustes',
     key: 'settings' as const,
@@ -50,7 +63,7 @@ const NAV_ITEMS = [
  * lateral. Patron estandar de app movil: 3 iconos + etiqueta, siempre
  * alcanzable con el pulgar, sin competir por espacio con nada mas.
  */
-export function MobileBottomNav({ activePath }: { activePath: 'executive-board' | 'settings' | 'privacy' }) {
+export function MobileBottomNav({ activePath }: { activePath: 'executive-board' | 'overview' | 'settings' | 'privacy' }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-elevated/95 backdrop-blur sm:hidden">
       {NAV_ITEMS.map((item) => {

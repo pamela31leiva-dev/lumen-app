@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 const NAV_LINKS = [
   { href: '/executive-board', label: 'Panorama', key: 'executive-board' as const },
+  { href: '/overview', label: 'Panorama Conjunto', key: 'overview' as const },
   { href: '/settings', label: 'Ajustes', key: 'settings' as const },
   { href: '/privacy', label: 'Privacidad', key: 'privacy' as const },
 ];
@@ -14,7 +15,7 @@ const NAV_LINKS = [
 interface AppNavProps {
   spaces: SpaceSummary[];
   activeSpaceId: string;
-  activePath: 'executive-board' | 'settings' | 'privacy';
+  activePath: 'executive-board' | 'overview' | 'settings' | 'privacy';
 }
 
 /** Encabezado compartido por /executive-board, /settings y /privacy. */
