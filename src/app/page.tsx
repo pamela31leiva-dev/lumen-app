@@ -7,6 +7,21 @@ import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
 import { AppFooter } from '@/components/AppFooter';
 
 /**
+ * Navegacion "dura" (recarga completa) en vez de router.replace(): se
+ * confirmo en produccion que, justo despues de signInAnonymously(), una
+ * transicion de cliente de Next.js (RSC fetch) podia llegar al servidor
+ * ANTES de que la cookie de sesion recien escrita se enviara con esa
+ * peticion -- el servidor entonces no veia usuario y rebotaba a /login,
+ * aunque la sesion ya existia (se confirmo visitando /executive-board de
+ * nuevo un instante despues, ya con la cookie presente, y cargaba bien). Una
+ * navegacion de pagina completa siempre manda las cookies actuales del
+ * navegador, asi que elimina la carrera de raiz.
+ */
+function hardNavigate(path: string) {
+  window.location.assign(path);
+}
+
+/**
  * Onboarding de Friccion Cero ("Modo Fantasma"): en vez de un landing que
  * exige registrarse antes de ver nada util, se intenta un inicio de sesion
  * anonimo de Supabase (signInAnonymously) de inmediato -- el mismo trigger
@@ -42,7 +57,7 @@ export default function HomePage() {
       } = await supabase.auth.getSession();
       if (cancelled) return;
       if (session) {
-        router.replace('/executive-board');
+        hardNavigate('/executive-board');
         return;
       }
 
@@ -52,7 +67,7 @@ export default function HomePage() {
         setStatus('fallback');
         return;
       }
-      router.replace('/executive-board');
+      hardNavigate('/executive-board');
     }
 
     enterGhostMode();
