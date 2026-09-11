@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getAccountBalances, getCategories, getMonthlyNetFlow, getPendingTransactions, getTransactionHistory, getUserSpaces } from '@/actions/dashboard';
 import { getBusinessCashInsight, getCashFlowProjection, getProactiveInsights } from '@/actions/analytics';
 import { getSpaceMembers } from '@/actions/settings';
+import { getPendingBills } from '@/actions/bills';
+import { getYearlyOverview } from '@/actions/history';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -17,6 +19,7 @@ import { BusinessProUpsell } from '@/components/dashboard/BusinessProUpsell';
 import { CashFlowProjectionCard } from '@/components/dashboard/CashFlowProjectionCard';
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { RealtimeSpaceSync } from '@/components/dashboard/RealtimeSpaceSync';
+import { HistoricalPanoramaCard } from '@/components/dashboard/HistoricalPanoramaCard';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -53,16 +56,27 @@ export default async function ExecutiveBoardPage() {
   const cookieSpaceId = cookieStore.get(ACTIVE_SPACE_COOKIE)?.value ?? null;
   const activeSpace = spaces.find((s) => s.id === cookieSpaceId) ?? spaces[0];
 
-  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow, spaceMembers, recentActivity] =
-    await Promise.all([
-      getAccountBalances(activeSpace.id),
-      getPendingTransactions(activeSpace.id),
-      getCategories(activeSpace.id),
-      getProactiveInsights(activeSpace.id),
-      getMonthlyNetFlow(activeSpace.id),
-      getSpaceMembers(activeSpace.id),
-      getTransactionHistory(activeSpace.id, 5),
-    ]);
+  const [
+    balances,
+    pendingTransactions,
+    categories,
+    proactiveInsights,
+    monthlyNetFlow,
+    spaceMembers,
+    recentActivity,
+    bills,
+    yearlyOverview,
+  ] = await Promise.all([
+    getAccountBalances(activeSpace.id),
+    getPendingTransactions(activeSpace.id),
+    getCategories(activeSpace.id),
+    getProactiveInsights(activeSpace.id),
+    getMonthlyNetFlow(activeSpace.id),
+    getSpaceMembers(activeSpace.id),
+    getTransactionHistory(activeSpace.id, 5),
+    getPendingBills(activeSpace.id),
+    getYearlyOverview(activeSpace.id),
+  ]);
 
   const totalBalance = balances.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
@@ -134,6 +148,7 @@ export default async function ExecutiveBoardPage() {
           hasActivityToday={proactiveInsights.hasActivityToday}
           accounts={balances.accounts}
           categories={categories}
+          bills={bills}
         />
 
         {/* Cero Ruido: detalle por cuenta colapsado — es consulta, no decision */}
@@ -148,6 +163,13 @@ export default async function ExecutiveBoardPage() {
             <LazyBalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
           </div>
         </details>
+
+        {/* "Selector Temporal e Historico": comparar años completos, solo si
+            hay 2+ años de datos -- comparar contra un solo año no es una
+            comparacion. Colapsado por defecto, igual que Detalle por cuenta. */}
+        {yearlyOverview.length >= 2 && (
+          <HistoricalPanoramaCard years={yearlyOverview} baseCurrency={balances.baseCurrency} />
+        )}
       </div>
     </main>
   );

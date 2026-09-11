@@ -70,7 +70,7 @@ export function SpaceSwitcher({ spaces, activeSpaceId }: SpaceSwitcherProps) {
         {open && (
           <div
             role="listbox"
-            className="animate-fade-scale-in absolute left-0 top-[calc(100%+6px)] z-30 min-w-[14rem] overflow-hidden rounded-xl border border-white/10 bg-elevated shadow-2xl shadow-black/50"
+            className="animate-fade-scale-in absolute left-0 top-[calc(100%+6px)] z-50 min-w-[14rem] overflow-hidden rounded-xl border border-white/10 bg-elevated shadow-2xl shadow-black/50"
           >
             {spaces.map((space) => (
               <button

@@ -67,7 +67,7 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
       {open && (
         <div
           role="listbox"
-          className="animate-fade-scale-in absolute left-0 top-[calc(100%+6px)] z-30 max-h-64 w-full min-w-[10rem] overflow-y-auto rounded-xl border border-white/10 bg-elevated shadow-2xl shadow-black/50"
+          className="animate-fade-scale-in absolute left-0 top-[calc(100%+6px)] z-50 max-h-64 w-full min-w-[10rem] overflow-y-auto rounded-xl border border-white/10 bg-elevated shadow-2xl shadow-black/50"
         >
           {options.length === 0 && <p className="px-3.5 py-2.5 text-sm text-stone-500">{emptyLabel}</p>}
           {options.map((option) => (

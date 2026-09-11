@@ -261,7 +261,12 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     const recognition = new Ctor();
     recognition.lang = 'es-CO';
     recognition.interimResults = true;
-    recognition.continuous = false;
+    // continuous=true: el motor de voz NO corta la grabacion en la primera
+    // pausa natural del habla (respirar, pensar el monto) -- solo termina
+    // cuando el usuario vuelve a tocar el boton. Con continuous=false (el
+    // valor anterior) una pausa de medio segundo bastaba para cortar el
+    // dictado a mitad de frase, perdiendo el resto del mensaje.
+    recognition.continuous = true;
 
     recognition.onresult = (event) => {
       const transcript = Array.from(event.results)
@@ -381,24 +386,32 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         />
 
         {speechSupported && (
-          <button
-            type="button"
-            onClick={toggleListening}
-            disabled={isPending}
-            title={isListening ? 'Detener dictado' : 'Dictar por voz'}
-            aria-label={isListening ? 'Detener dictado' : 'Dictar por voz'}
-            className={cn(
-              'flex shrink-0 items-center justify-center rounded-lg border p-2.5 transition disabled:opacity-50',
-              isListening
-                ? 'animate-pulse border-red-500/40 text-red-400'
-                : 'border-white/10 text-stone-400 hover:border-gold/30 hover:text-gold',
+          <div className="relative shrink-0">
+            {isListening && (
+              <>
+                <span className="absolute inset-0 animate-ping rounded-lg bg-gold/30" />
+                <span className="absolute inset-0 animate-ping rounded-lg bg-gold/20 [animation-delay:0.35s]" />
+              </>
             )}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
-              <rect x="9" y="2" width="6" height="12" rx="3" strokeLinecap="round" strokeLinejoin="round" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 11a7 7 0 0 0 14 0M12 18v4" />
-            </svg>
-          </button>
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={isPending}
+              title={isListening ? 'Detener y enviar' : 'Dictar por voz'}
+              aria-label={isListening ? 'Detener y enviar' : 'Dictar por voz'}
+              className={cn(
+                'relative flex shrink-0 items-center justify-center rounded-lg border p-2.5 transition disabled:opacity-50',
+                isListening
+                  ? 'border-gold/50 bg-gold/10 text-gold'
+                  : 'border-white/10 text-stone-400 hover:border-gold/30 hover:text-gold',
+              )}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+                <rect x="9" y="2" width="6" height="12" rx="3" strokeLinecap="round" strokeLinejoin="round" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 11a7 7 0 0 0 14 0M12 18v4" />
+              </svg>
+            </button>
+          </div>
         )}
 
         <input

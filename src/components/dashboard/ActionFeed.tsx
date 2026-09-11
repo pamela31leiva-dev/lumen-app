@@ -1,8 +1,10 @@
 import { ProactiveAssistantBanner } from '@/components/dashboard/ProactiveAssistantBanner';
 import { PendingConfirmationCard } from '@/components/dashboard/PendingConfirmationCard';
 import { DailyCheckInBubble } from '@/components/dashboard/DailyCheckInBubble';
+import { BillAlerts } from '@/components/dashboard/BillAlerts';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import type { RecurringObligation } from '@/domain/types/analytics';
+import type { BillSummary } from '@/actions/bills';
 
 interface ActionFeedProps {
   spaceId: string;
@@ -12,6 +14,7 @@ interface ActionFeedProps {
   hasActivityToday: boolean;
   accounts: AccountBalance[];
   categories: CategoryOption[];
+  bills: BillSummary[];
 }
 
 /**
@@ -29,9 +32,11 @@ export function ActionFeed({
   hasActivityToday,
   accounts,
   categories,
+  bills,
 }: ActionFeedProps) {
   const hasPending = pendingTransactions.length > 0;
   const hasOverdueObligation = recurringObligations.some((o) => o.isOverdue);
+  const hasUrgentBill = bills.some((b) => b.daysUntilDue <= 3);
 
   return (
     <section>
@@ -42,6 +47,8 @@ export function ActionFeed({
       <DailyCheckInBubble spaceId={spaceId} hasActivityToday={hasActivityToday} />
 
       <div className="flex flex-col gap-4">
+        <BillAlerts spaceId={spaceId} bills={bills} />
+
         <ProactiveAssistantBanner spaceId={spaceId} baseCurrency={baseCurrency} recurringObligations={recurringObligations} />
 
         {pendingTransactions.map((transaction) => (
@@ -55,7 +62,7 @@ export function ActionFeed({
           />
         ))}
 
-        {!hasPending && !hasOverdueObligation && (
+        {!hasPending && !hasOverdueObligation && !hasUrgentBill && (
           <div className="rounded-xl border border-white/10 bg-elevated p-5 text-sm text-stone-500 transition-colors hover:border-gold/15">
             Todo esta al dia. No hay nada pendiente por revisar en este espacio.
           </div>
