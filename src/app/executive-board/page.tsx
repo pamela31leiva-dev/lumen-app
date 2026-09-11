@@ -105,7 +105,10 @@ export default async function ExecutiveBoardPage() {
             para espacios sin datos todavia. En espacios de Negocio sin Pro,
             un unico upsell reemplaza ambas (nunca bloquea lo basico). */}
         {businessAnalyticsLocked ? (
-          <BusinessProUpsell />
+          <BusinessProUpsell
+            spaceId={activeSpace.id}
+            canManage={activeSpace.role === 'owner' || activeSpace.role === 'admin'}
+          />
         ) : (
           <>
             {businessCashInsight && <BusinessCashCard insight={businessCashInsight} baseCurrency={balances.baseCurrency} />}

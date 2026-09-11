@@ -4,6 +4,7 @@ import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
 import { RenameSpaceForm } from '@/components/dashboard/RenameSpaceForm';
 import { CreateSpaceDialog } from '@/components/dashboard/CreateSpaceDialog';
+import { SpaceMembersManager } from '@/components/dashboard/SpaceMembersManager';
 import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SessionPreferenceInfo } from '@/components/dashboard/SessionPreferenceInfo';
 import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
@@ -14,13 +15,6 @@ import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  editor: 'Editor',
-  viewer: 'Solo lectura',
-};
 
 const PLAN_LABEL: Record<PlanTier, string> = {
   free: 'Gratuito',
@@ -62,24 +56,11 @@ export default async function SettingsPage() {
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium text-stone-200">Miembros ({members.length})</h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-stone-200">Miembros del Espacio ({members.length})</h2>
             <CreateSpaceDialog triggerLabel="+ Nuevo espacio" />
           </div>
-          <ul className="mt-4 flex flex-col divide-y divide-white/10">
-            {members.map((member) => (
-              <li key={member.userId} className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="text-sm text-stone-100">{member.fullName ?? member.email}</p>
-                  {member.fullName && <p className="text-xs text-stone-500">{member.email}</p>}
-                </div>
-                <span className="shrink-0 rounded-full bg-emerald-600/15 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
-                  {ROLE_LABEL[member.role] ?? member.role}
-                </span>
-              </li>
-            ))}
-            {members.length === 0 && <p className="py-3 text-sm text-stone-500">No hay miembros para mostrar.</p>}
-          </ul>
+          <SpaceMembersManager spaceId={activeSpace.id} members={members} canManage={canEditSpace} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">

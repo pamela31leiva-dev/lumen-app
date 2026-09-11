@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
+import { getSupabaseServiceRoleClient } from '@/infrastructure/supabase/service-role-client';
 import type { MemberRole, SpaceMemberSummary } from '@/domain/types/dashboard';
 
 interface SpaceMemberRow {
@@ -63,6 +64,107 @@ export async function renameSpace(
   if (error) {
     console.error('Error al renombrar el espacio:', error);
     return { success: false, error: 'No se pudo renombrar el espacio. Verifica que tengas permisos de owner o admin.' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Añade a un colaborador existente de Lumen a este espacio por su correo.
+ * No envia ningun email real (no hay servicio de envio conectado): la
+ * persona invitada debe ya tener cuenta en Lumen. Buscar el perfil por
+ * correo requiere la service role porque profiles_select_shared_space
+ * (0004) solo deja ver perfiles de gente con la que YA se comparte un
+ * espacio -- exactamente lo que todavia no es cierto en este momento. El
+ * INSERT real en space_members si pasa por el cliente con sesion, asi que
+ * RLS (space_members_insert_admin: solo owner/admin) sigue siendo quien
+ * decide si la operacion se permite, no esta funcion.
+ */
+export async function inviteMemberByEmail(
+  spaceId: string,
+  email: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+
+  const trimmedEmail = email.trim().toLowerCase();
+  if (!trimmedEmail) {
+    return { success: false, error: 'Escribe un correo.' };
+  }
+
+  const serviceRole = getSupabaseServiceRoleClient();
+  if (!serviceRole) {
+    return { success: false, error: 'No se pudo buscar esa cuenta. Intenta de nuevo.' };
+  }
+
+  const { data: profile } = await serviceRole.from('profiles').select('id').ilike('email', trimmedEmail).maybeSingle();
+  if (!profile) {
+    return { success: false, error: 'No hay ninguna cuenta de Lumen con ese correo. Pidele que se registre primero.' };
+  }
+
+  const { error } = await supabase
+    .from('space_members')
+    .insert({ space_id: spaceId, user_id: profile.id, role: 'editor', invited_by: user.id });
+
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'Esa persona ya es parte de este espacio.' };
+    }
+    console.error('Error al invitar miembro:', error);
+    return { success: false, error: 'No se pudo añadir a esa persona. Verifica que tengas permisos de owner o admin.' };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Remueve a un colaborador del espacio. RLS (space_members_delete_admin_or_self)
+ * ya permite esto a owner/admin (o a la propia persona saliendo), pero aqui
+ * ademas se protege explicitamente al owner original -- removerlo dejaria el
+ * espacio sin due-o claro, un estado que la UI no sabe representar todavia.
+ */
+export async function removeMember(
+  spaceId: string,
+  userId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+
+  const { data: target } = await supabase
+    .from('space_members')
+    .select('role')
+    .eq('space_id', spaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (target?.role === 'owner') {
+    return { success: false, error: 'No puedes remover al propietario del espacio.' };
+  }
+
+  const { error, count } = await supabase
+    .from('space_members')
+    .delete({ count: 'exact' })
+    .eq('space_id', spaceId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error al remover miembro:', error);
+    return { success: false, error: 'No se pudo remover a esa persona.' };
+  }
+  if (!count) {
+    return { success: false, error: 'No tienes permiso para remover a esa persona.' };
   }
 
   return { success: true };
