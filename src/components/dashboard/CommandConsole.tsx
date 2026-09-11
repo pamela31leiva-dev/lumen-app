@@ -23,6 +23,44 @@ function sourceForMimeType(mimeType: string): AiCaptureSource {
   return mimeType.startsWith('image/') ? 'ai_photo' : 'ai_document';
 }
 
+// Umbral bajo el cual una imagen ya es lo bastante liviana como para no
+// valer la pena recomprimir (fotos de pantalla, capturas ya optimizadas).
+const COMPRESS_THRESHOLD_BYTES = 600 * 1024;
+const MAX_IMAGE_DIMENSION_PX = 1920;
+
+/**
+ * Redimensiona/recomprime una foto en el navegador (canvas + JPEG) antes de
+ * subirla, para que una foto de camara de varios MB no se cargue completa a
+ * Storage en conexiones moviles lentas. Los PDF pasan intactos (comprimir un
+ * PDF en el cliente de forma segura no es viable sin una libreria pesada).
+ * Cualquier fallo cae de vuelta al archivo original: nunca bloquea la captura.
+ */
+async function compressImageIfNeeded(file: File): Promise<File> {
+  if (!file.type.startsWith('image/') || file.size <= COMPRESS_THRESHOLD_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION_PX / Math.max(bitmap.width, bitmap.height));
+    const targetWidth = Math.round(bitmap.width * scale);
+    const targetHeight = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    bitmap.close();
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+    if (!blob || blob.size >= file.size) return file;
+
+    const compressedName = file.name.replace(/\.[^./\\]+$/, '') + '.jpg';
+    return new File([blob], compressedName, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
 // El Web Speech API no tiene tipos oficiales en lib.dom.d.ts y
 // webkitSpeechRecognition no existe en absoluto ahi; se declara aqui el
 // subconjunto minimo que se usa, en vez de tipar todo el API.
@@ -62,7 +100,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const router = useRouter();
   const [text, setText] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error' | 'illegible'; message: string } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [showSlowNotice, setShowSlowNotice] = useState(false);
@@ -71,6 +109,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   // miniatura del archivo seleccionado antes de confirmar".
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
@@ -137,7 +176,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     if (uploadInputRef.current) uploadInputRef.current.value = '';
   }
 
-  function handleFileSelected(file: File) {
+  async function handleFileSelected(file: File) {
     setFeedback(null);
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       setFeedback({ kind: 'error', message: `El archivo pesa mas de ${MAX_FILE_SIZE_MB}MB. Usa uno mas liviano.` });
@@ -146,6 +185,16 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
     setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
+
+    // La miniatura ya se ve con el archivo original; la compresion corre en
+    // paralelo y reemplaza el archivo a subir cuando termina, sin bloquear
+    // la vista previa ni el resto de la interfaz.
+    if (file.type.startsWith('image/') && file.size > COMPRESS_THRESHOLD_BYTES) {
+      setIsCompressing(true);
+      const compressed = await compressImageIfNeeded(file);
+      setIsCompressing(false);
+      setSelectedFile((current) => (current === file ? compressed : current));
+    }
   }
 
   function submitSelectedFile() {
@@ -172,7 +221,8 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       });
 
       if (!result.success) {
-        setFeedback({ kind: 'error', message: result.error });
+        if (result.illegible) clearSelectedFile();
+        setFeedback({ kind: result.illegible ? 'illegible' : 'error', message: result.error });
         return;
       }
 
@@ -366,11 +416,17 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         </div>
       </div>
 
-      {feedback && (
+      {feedback && feedback.kind === 'illegible' && (
+        <div className="animate-fade-scale-in mt-2 rounded-lg border border-gold/30 bg-gold-soft px-3 py-2">
+          <p className="text-xs text-stone-100">{feedback.message}</p>
+        </div>
+      )}
+      {feedback && feedback.kind !== 'illegible' && (
         <p className={cn('mt-2 text-xs', feedback.kind === 'success' ? 'text-growth' : 'text-red-400')}>
           {feedback.message}
         </p>
       )}
+      {!feedback && isCompressing && <p className="mt-2 text-xs text-stone-500">Optimizando imagen...</p>}
       {!feedback && showSlowNotice && (
         <p className="mt-2 text-xs text-stone-500">La IA esta interpretando tu movimiento, ya casi...</p>
       )}

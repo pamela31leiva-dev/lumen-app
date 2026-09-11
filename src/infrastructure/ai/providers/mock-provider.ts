@@ -37,6 +37,7 @@ export class MockAiExtractionProvider implements AiExtractionPort {
       clarification_options: [],
       suggested_tags: [],
       suggested_space_name: null,
+      document_legibility_issue: null,
     };
   }
 }

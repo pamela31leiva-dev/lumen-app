@@ -67,6 +67,14 @@ export interface AiExtractionResult {
    * al espacio activo. null si no hay espacio mas adecuado que el activo.
    */
   suggested_space_name: string | null;
+  /**
+   * Motivo breve cuando una imagen/documento adjunto esta arrugado, cortado,
+   * borroso o de baja legibilidad al punto de que un monto leido de ahi no
+   * es confiable (ej. "Foto cortada, el monto total no es visible"). null en
+   * todos los demas casos, incluida cualquier entrada de texto o voz (esto
+   * solo aplica a fuentes con imagen/documento adjunto).
+   */
+  document_legibility_issue: string | null;
 }
 
 /** Payload para iniciar una captura (texto libre, transcripcion de voz, o documento ya subido a Storage). */
@@ -91,7 +99,7 @@ export type ProcessCaptureResult =
       needsReview: boolean;
       uncertainties: string[];
     }
-  | { success: false; error: string };
+  | { success: false; error: string; illegible?: boolean };
 
 /** Payload para que la persona confirme (y corrija) una transaccion pendiente. */
 export interface ConfirmTransactionDTO {

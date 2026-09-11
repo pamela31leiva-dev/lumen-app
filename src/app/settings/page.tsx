@@ -8,6 +8,7 @@ import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SessionPreferenceInfo } from '@/components/dashboard/SessionPreferenceInfo';
 import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
 import { ImpactSummaryModal } from '@/components/dashboard/ImpactSummaryModal';
+import { ExportModal } from '@/components/dashboard/ExportModal';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -96,6 +97,16 @@ export default async function SettingsPage() {
           </div>
           <div className="mt-3">
             <TransactionHistoryList spaceId={activeSpace.id} items={transactionHistory} canDelete={canEditSpace} />
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium text-stone-200">Exportar reportes</h2>
+              <p className="mt-1 text-xs text-stone-500">Excel de grado profesional para tu contador o revision propia.</p>
+            </div>
+            <ExportModal spaceId={activeSpace.id} />
           </div>
         </section>
 

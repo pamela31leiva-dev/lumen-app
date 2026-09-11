@@ -80,6 +80,19 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
     };
   }
 
+  // Escudo de legibilidad: si la imagen/documento esta arrugado, cortado o
+  // ilegible al punto de que el monto leido no es confiable, es peor guardar
+  // un numero probablemente equivocado (ej. leer $15.000 en vez de $67.000)
+  // que no guardar nada. Solo aplica a fuentes con imagen/documento adjunto.
+  const isDocumentSource = payload.capture_source === 'ai_photo' || payload.capture_source === 'ai_document';
+  if (isDocumentSource && extraction.document_legibility_issue) {
+    return {
+      success: false,
+      illegible: true,
+      error: 'Factura ilegible o arrugada. Te sugerimos registrar el monto por voz o texto manual.',
+    };
+  }
+
   // Sin un monto no hay nada que registrar (transactions exige
   // amount_original > 0): mejor un mensaje claro e inmediato aqui que dejar
   // que el insert siguiente truene contra esa constraint con un error

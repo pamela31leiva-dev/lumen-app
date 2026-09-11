@@ -19,6 +19,7 @@ const RESPONSE_SCHEMA = {
     clarification_options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     suggested_tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
     suggested_space_name: { type: SchemaType.STRING, nullable: true },
+    document_legibility_issue: { type: SchemaType.STRING, nullable: true },
   },
   required: [
     'amount_original',
@@ -33,6 +34,7 @@ const RESPONSE_SCHEMA = {
     'clarification_options',
     'suggested_tags',
     'suggested_space_name',
+    'document_legibility_issue',
   ],
 };
 
@@ -49,6 +51,7 @@ interface GeminiExtractionSchema {
   clarification_options: string[];
   suggested_tags: string[];
   suggested_space_name: string | null;
+  document_legibility_issue: string | null;
 }
 
 /**
@@ -140,6 +143,7 @@ export class GeminiExtractionProvider implements AiExtractionPort {
       clarification_options: parsed.clarification_options ?? [],
       suggested_tags: parsed.suggested_tags,
       suggested_space_name: parsed.suggested_space_name,
+      document_legibility_issue: parsed.document_legibility_issue,
     };
   }
 
