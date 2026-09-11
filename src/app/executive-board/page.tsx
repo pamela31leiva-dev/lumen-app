@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getAccountBalances, getCategories, getPendingTransactions, getUserSpaces } from '@/actions/dashboard';
+import { getAccountBalances, getCategories, getMonthlyNetFlow, getPendingTransactions, getUserSpaces } from '@/actions/dashboard';
 import { getProactiveInsights } from '@/actions/analytics';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
@@ -46,11 +46,12 @@ export default async function ExecutiveBoardPage() {
   const cookieSpaceId = cookieStore.get(ACTIVE_SPACE_COOKIE)?.value ?? null;
   const activeSpace = spaces.find((s) => s.id === cookieSpaceId) ?? spaces[0];
 
-  const [balances, pendingTransactions, categories, proactiveInsights] = await Promise.all([
+  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow] = await Promise.all([
     getAccountBalances(activeSpace.id),
     getPendingTransactions(activeSpace.id),
     getCategories(activeSpace.id),
     getProactiveInsights(activeSpace.id),
+    getMonthlyNetFlow(activeSpace.id),
   ]);
 
   const totalBalance = balances.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
@@ -66,7 +67,12 @@ export default async function ExecutiveBoardPage() {
         <CommandConsole spaceId={activeSpace.id} />
 
         {/* a) Hero de Patrimonio y Proyeccion */}
-        <NetWorthHero baseCurrency={balances.baseCurrency} totalBalance={totalBalance} />
+        <NetWorthHero
+          baseCurrency={balances.baseCurrency}
+          totalBalance={totalBalance}
+          hasRealAssets={balances.hasRealAssets}
+          monthlyNetFlow={monthlyNetFlow}
+        />
 
         {/* b) Feed de Decisiones Inteligentes */}
         <ActionFeed

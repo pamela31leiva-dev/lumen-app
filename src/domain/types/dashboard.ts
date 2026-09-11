@@ -26,11 +26,20 @@ export interface AccountBalance {
   currentBalance: number;
   /** Suma cruda en la moneda propia de la cuenta (sin conversion). */
   currentBalanceOriginal: number;
+  /** Saldo inicial declarado por el usuario (en la moneda propia de la cuenta). */
+  openingBalance: number;
 }
 
 export interface AccountBalancesData {
   baseCurrency: string;
   accounts: AccountBalance[];
+  /**
+   * true si al menos una cuenta tiene saldo inicial (opening_balance) > 0 --
+   * es decir, el usuario declaro activos reales. Sin esto, "Patrimonio Neto"
+   * no tiene sentido: un gasto suelto de bolsillo contra una cuenta en $0 no
+   * es una deuda, es solo que todavia no se registro cuanto dinero real hay.
+   */
+  hasRealAssets: boolean;
 }
 
 /** Resumen de una transaccion en estado pending_confirmation para la bandeja de revision. */

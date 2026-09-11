@@ -109,18 +109,24 @@ export async function setActiveSpace(spaceId: string): Promise<{ success: boolea
 export async function getAccountBalances(spaceId: string): Promise<AccountBalancesData> {
   const supabase = await getSupabaseServerClient();
 
-  const [{ data: space }, { data: balances, error }] = await Promise.all([
+  const [{ data: space }, { data: balances, error }, { data: accountRows }] = await Promise.all([
     supabase.from('spaces').select('base_currency').eq('id', spaceId).single(),
     supabase
       .from('account_balances')
       .select('account_id, space_id, account_name, account_type, account_currency, is_active, current_balance, current_balance_original')
       .eq('space_id', spaceId)
       .order('account_name', { ascending: true }),
+    // La vista account_balances no expone opening_balance; se consulta aparte
+    // para mostrarlo/editarlo y para decidir si hay activos reales
+    // declarados (ver hasRealAssets).
+    supabase.from('accounts').select('id, opening_balance').eq('space_id', spaceId),
   ]);
 
   if (error) {
     console.error('Error al leer account_balances:', error);
   }
+
+  const openingBalanceById = new Map((accountRows ?? []).map((a) => [a.id, Number(a.opening_balance)]));
 
   return {
     baseCurrency: space?.base_currency ?? 'COP',
@@ -133,8 +139,44 @@ export async function getAccountBalances(spaceId: string): Promise<AccountBalanc
       isActive: row.is_active,
       currentBalance: Number(row.current_balance),
       currentBalanceOriginal: Number(row.current_balance_original),
+      openingBalance: openingBalanceById.get(row.account_id) ?? 0,
     })),
+    hasRealAssets: [...openingBalanceById.values()].some((v) => v > 0),
   };
+}
+
+/**
+ * Flujo neto de dinero CONFIRMADO en el mes calendario en curso (ingresos -
+ * gastos; un transfer es neutro para el espacio como un todo, no cuenta).
+ * Se usa como reemplazo de "Patrimonio Neto" cuando el espacio no tiene
+ * activos reales declarados (ver hasRealAssets en getAccountBalances):
+ * mostrar de entrada un "patrimonio" negativo por el primer gasto suelto es
+ * enganoso -- esto en cambio se lee como "lo que ha entrado y salido este
+ * mes", que se resetea cada mes en vez de arrastrar una cifra alarmante.
+ */
+export async function getMonthlyNetFlow(spaceId: string): Promise<number> {
+  const supabase = await getSupabaseServerClient();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('type, amount_base')
+    .eq('space_id', spaceId)
+    .eq('status', 'confirmed')
+    .gte('transaction_date', monthStart);
+
+  if (error || !data) {
+    console.error('Error al calcular el flujo del mes:', error);
+    return 0;
+  }
+
+  return data.reduce((sum, row) => {
+    const amount = Number(row.amount_base);
+    if (row.type === 'income') return sum + amount;
+    if (row.type === 'expense') return sum - amount;
+    return sum;
+  }, 0);
 }
 
 /** Transacciones en pending_confirmation: la bandeja de revision humana. */
