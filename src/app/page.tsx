@@ -28,6 +28,12 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
 
+    // Precarga el destino en paralelo con la autenticacion (nunca la
+    // bloquea): para cuando signInAnonymously() resuelve, el JS/RSC de
+    // /executive-board ya deberia estar en cache, asi que router.replace()
+    // de abajo se siente instantaneo en vez de disparar una carga fresca.
+    router.prefetch('/executive-board');
+
     async function enterGhostMode() {
       const supabase = getSupabaseBrowserClient();
 

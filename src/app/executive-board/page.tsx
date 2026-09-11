@@ -9,7 +9,7 @@ import { CreateSpaceDialog } from '@/components/dashboard/CreateSpaceDialog';
 import { NetWorthHero } from '@/components/dashboard/NetWorthHero';
 import { ActionFeed } from '@/components/dashboard/ActionFeed';
 import { CommandConsole } from '@/components/dashboard/CommandConsole';
-import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
+import { LazyBalancesGrid } from '@/components/dashboard/LazyBalancesGrid';
 import { SaveSpaceBanner } from '@/components/dashboard/SaveSpaceBanner';
 import { BusinessCashCard } from '@/components/dashboard/BusinessCashCard';
 
@@ -107,7 +107,7 @@ export default async function ExecutiveBoardPage() {
             </span>
           </summary>
           <div className="px-5">
-            <BalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
+            <LazyBalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
           </div>
         </details>
       </div>
