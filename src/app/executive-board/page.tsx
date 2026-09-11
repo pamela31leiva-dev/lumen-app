@@ -10,6 +10,7 @@ import { NetWorthHero } from '@/components/dashboard/NetWorthHero';
 import { ActionFeed } from '@/components/dashboard/ActionFeed';
 import { CommandConsole } from '@/components/dashboard/CommandConsole';
 import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
+import { SaveSpaceBanner } from '@/components/dashboard/SaveSpaceBanner';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -61,6 +62,10 @@ export default async function ExecutiveBoardPage() {
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="executive-board" />
 
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 pb-24 sm:pb-8">
+        {/* Modo Fantasma: invita, nunca exige, a guardar el espacio una vez
+            que la persona ya lo esta usando -- ver app/page.tsx. */}
+        {user.is_anonymous && <SaveSpaceBanner />}
+
         {/* c) Consola de Comando Directa: arriba y sticky — lo primero que
             se ve, siempre alcanzable, sin depender de scroll ni de que el
             teclado virtual no tape un input fijo abajo. */}

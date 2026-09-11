@@ -915,4 +915,35 @@ begin
 end;
 $$;
 
+-- 0013: Modo Fantasma -- profiles.email nullable para inicio de sesion
+-- anonimo (requiere ademas habilitar "Anonymous Sign-Ins" en Supabase
+-- Dashboard -> Authentication -> Sign In / Providers; no activable por SQL) --
+alter table public.profiles alter column email drop not null;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_full_name text;
+begin
+    v_full_name := coalesce(new.raw_user_meta_data ->> 'full_name', case when new.email is null then 'Invitado' else null end);
+
+    insert into public.profiles (id, email, full_name)
+    values (new.id, new.email, v_full_name)
+    on conflict (id) do nothing;
+
+    insert into public.spaces (name, type, base_currency, owner_id)
+    values ('Espacio Personal', 'personal', 'COP', new.id);
+
+    insert into public.subscriptions (user_id, plan, status)
+    values (new.id, 'free', 'active')
+    on conflict (user_id) do nothing;
+
+    return new;
+end;
+$$;
+
 commit;

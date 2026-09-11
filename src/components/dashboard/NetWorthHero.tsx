@@ -50,11 +50,10 @@ export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthl
   const label = hasRealAssets ? 'Patrimonio Neto' : 'Liquidez del Mes';
   const value = hasRealAssets ? totalBalance : monthlyNetFlow;
   const isNegative = value < 0;
-  // El rojo de alarma solo se justifica cuando hay activos reales de por
-  // medio (deuda real contra patrimonio real). Sin eso, un numero negativo
-  // es apenas "gastaste mas de lo que registraste como ingreso este mes" --
-  // informativo, no una alarma.
-  const amountColorClass = hasRealAssets && isNegative ? 'text-red-400' : 'text-stone-50';
+  // Neutralizacion visual total: ningun monto usa rojo de alarma, ni
+  // siquiera con activos reales de por medio -- un ambar sutil basta para
+  // señalar "presta atencion aqui" sin la carga punitiva del rojo.
+  const amountColorClass = hasRealAssets && isNegative ? 'text-amber-300' : 'text-stone-50';
 
   return (
     <section

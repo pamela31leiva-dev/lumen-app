@@ -94,7 +94,13 @@ export async function updateSupabaseSession(request: NextRequest) {
     }
   }
 
-  if (user && !hasAcceptedTerms && !isConsentExempt) {
+  // Modo Fantasma: un usuario anonimo (signInAnonymously, ver app/page.tsx)
+  // todavia no entrego ningun dato personal real -- exigirle el gate de
+  // Habeas Data antes de dejarlo ni probar la app seria la misma friccion
+  // que el Modo Fantasma existe para eliminar. El consentimiento se pide
+  // como parte del flujo de "guardar tu espacio" (upgradeAnonymousAccount),
+  // que es el momento en que si aporta un dato real (su correo).
+  if (user && !hasAcceptedTerms && !isConsentExempt && !user.is_anonymous) {
     return NextResponse.redirect(new URL(ACCEPT_TERMS_PATH, request.url));
   }
   if (user && hasAcceptedTerms && pathname === ACCEPT_TERMS_PATH) {

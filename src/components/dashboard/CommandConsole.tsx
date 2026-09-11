@@ -113,6 +113,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
+  const latestTranscriptRef = useRef('');
 
   useEffect(() => {
     setSpeechSupported(getSpeechRecognitionCtor() !== null);
@@ -142,8 +143,15 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     return () => clearTimeout(timer);
   }, [isPending]);
 
-  function submitText() {
-    const trimmed = text.trim();
+  /**
+   * Acepta un valor opcional para poder enviar el dictado por voz de
+   * inmediato al terminar de hablar, sin depender del estado `text` (que
+   * todavia no se habria repintado en el mismo tick) ni de un tercer toque
+   * manual en "Registrar" -- "sin tipeo manual" incluye no tener que tocar
+   * nada despues de dictar.
+   */
+  function submitText(overrideValue?: string) {
+    const trimmed = (overrideValue ?? text).trim();
     if (!trimmed) return;
     setFeedback(null);
     startTransition(async () => {
@@ -155,7 +163,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       setText('');
       setFeedback({
         kind: 'success',
-        message: result.needsReview ? 'Guardado. Vale la pena revisar algunos detalles.' : 'Guardado y listo para confirmar.',
+        message: result.needsReview ? 'Registrado. Vale la pena confirmar un par de detalles.' : 'Registrado. Tu mapa sigue intacto.',
       });
       router.refresh();
     });
@@ -229,7 +237,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       clearSelectedFile();
       setFeedback({
         kind: 'success',
-        message: result.needsReview ? 'Documento guardado. Vale la pena revisar algunos detalles.' : 'Documento guardado y listo para confirmar.',
+        message: result.needsReview ? 'Documento registrado. Vale la pena confirmar un par de detalles.' : 'Documento registrado. Tu mapa sigue intacto.',
       });
       router.refresh();
     });
@@ -259,17 +267,23 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
       const transcript = Array.from(event.results)
         .map((result) => result[0]?.transcript ?? '')
         .join(' ');
+      latestTranscriptRef.current = transcript;
       setText(transcript);
     };
     recognition.onerror = () => {
       setIsListening(false);
       setFeedback({ kind: 'error', message: 'No se pudo escuchar el microfono. Intenta de nuevo o escribe.' });
     };
+    // Widget de voz ultrarrapido: en cuanto termina de hablar, se envia solo
+    // -- no hace falta tocar "Registrar" despues de dictar.
     recognition.onend = () => {
       setIsListening(false);
+      const finalTranscript = latestTranscriptRef.current.trim();
+      if (finalTranscript) submitText(finalTranscript);
     };
 
     recognitionRef.current = recognition;
+    latestTranscriptRef.current = '';
     setFeedback(null);
     setIsListening(true);
     recognition.start();
