@@ -5,6 +5,8 @@ interface NetWorthHeroProps {
   totalBalance: number;
   hasRealAssets: boolean;
   monthlyNetFlow: number;
+  /** Dias consecutivos con al menos un movimiento confirmado ("Racha de Conciencia"). */
+  activityStreakDays: number;
 }
 
 /**
@@ -20,7 +22,7 @@ interface NetWorthHeroProps {
  * se muestra "Liquidez del Mes" (el flujo neto de este mes calendario, que
  * se resetea cada mes) con tono neutro en vez de alarma roja.
  */
-export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthlyNetFlow }: NetWorthHeroProps) {
+export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthlyNetFlow, activityStreakDays }: NetWorthHeroProps) {
   const label = hasRealAssets ? 'Patrimonio Neto' : 'Liquidez del Mes';
   const value = hasRealAssets ? totalBalance : monthlyNetFlow;
   const isNegative = value < 0;
@@ -37,6 +39,12 @@ export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthl
           <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500">Trayectoria y Control</p>
           <h2 className="mt-1 text-base font-semibold text-gold">{label}</h2>
           <p className={cn('amount mt-2 text-4xl font-bold', amountColorClass)}>{formatMoney(value, baseCurrency)}</p>
+          {activityStreakDays >= 2 && (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-stone-400">
+              <span aria-hidden>🛡️</span>
+              {activityStreakDays} dias protegiendo tu liquidez
+            </p>
+          )}
           {!hasRealAssets && (
             <p className="mt-2 max-w-sm text-xs text-stone-500">
               Aun no registras un saldo inicial en tus cuentas. Este numero es lo que ha entrado y salido este mes, no tu

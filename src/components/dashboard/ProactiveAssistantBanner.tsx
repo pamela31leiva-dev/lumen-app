@@ -9,7 +9,6 @@ interface ProactiveAssistantBannerProps {
   spaceId: string;
   baseCurrency: string;
   recurringObligations: RecurringObligation[];
-  hasActivityToday: boolean;
 }
 
 function formatMoney(value: number, currency: string) {
@@ -20,52 +19,26 @@ function formatMoney(value: number, currency: string) {
   }
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function scrollToQuickCapture() {
   document.getElementById('quick-capture')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /**
  * Notificaciones conversacionales, nunca punitivas: obligaciones recurrentes
- * vencidas (segun el motor de patrones) y un check-in nocturno amable si no
- * hubo ningun movimiento en el dia. Todo calculado client-side sobre props ya
- * resueltas en el servidor (getProactiveInsights) — aqui solo se decide QUE
- * mostrar y CUANDO (la hora local del navegador, que el servidor no conoce).
+ * vencidas segun el motor de patrones. El check-in general de "¿registraste
+ * algo hoy?" vive ahora en DailyCheckInBubble (dos ventanas horarias,
+ * estilo burbuja de chat) para no duplicar el mismo recordatorio en dos
+ * lugares distintos de la pantalla.
  */
-export function ProactiveAssistantBanner({
-  spaceId,
-  baseCurrency,
-  recurringObligations,
-  hasActivityToday,
-}: ProactiveAssistantBannerProps) {
+export function ProactiveAssistantBanner({ spaceId, baseCurrency, recurringObligations }: ProactiveAssistantBannerProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isEvening, setIsEvening] = useState(false);
-  const [nightlyDismissed, setNightlyDismissed] = useState(false);
   const [actionedKeys, setActionedKeys] = useState<Set<string>>(new Set());
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
-    setIsEvening(new Date().getHours() >= 19);
-    try {
-      setNightlyDismissed(window.localStorage.getItem(`nightly-checkin-${spaceId}-${todayKey()}`) === '1');
-    } catch {
-      // localStorage puede fallar en navegacion privada; el check-in simplemente se muestra de nuevo, no es critico.
-    }
-  }, [spaceId]);
-
-  function handleDismissNightly() {
-    setNightlyDismissed(true);
-    try {
-      window.localStorage.setItem(`nightly-checkin-${spaceId}-${todayKey()}`, '1');
-    } catch {
-      // ver nota arriba
-    }
-  }
+  }, []);
 
   function handleConfirmObligation(obligation: RecurringObligation) {
     setPendingKey(obligation.key);
@@ -78,14 +51,12 @@ export function ProactiveAssistantBanner({
     });
   }
 
-  // Se evita renderizar segun la hora/localStorage antes de montar, para no
-  // desincronizar el HTML del servidor (que no conoce la hora local) con el del cliente.
+  // Se evita renderizar antes de montar para no desincronizar el HTML del
+  // servidor con el del cliente (actionedKeys/pendingKey son estado local).
   if (!mounted) return null;
 
   const visibleObligations = recurringObligations.filter((o) => o.isOverdue && !actionedKeys.has(o.key));
-  const showNightlyCheckIn = isEvening && !hasActivityToday && !nightlyDismissed;
-
-  if (visibleObligations.length === 0 && !showNightlyCheckIn) return null;
+  if (visibleObligations.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -120,35 +91,6 @@ export function ProactiveAssistantBanner({
           </div>
         </div>
       ))}
-
-      {showNightlyCheckIn && (
-        <div className="rounded-xl border border-white/10 bg-elevated p-4">
-          <p className="text-sm text-stone-100">¿Hubo movimientos hoy en este espacio, ingresos o egresos?</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={scrollToQuickCapture}
-              className="rounded-lg bg-wealth px-3 py-1.5 text-xs font-medium text-white transition hover:bg-wealth-hover"
-            >
-              Registrar ingreso
-            </button>
-            <button
-              type="button"
-              onClick={scrollToQuickCapture}
-              className="rounded-lg bg-wealth px-3 py-1.5 text-xs font-medium text-white transition hover:bg-wealth-hover"
-            >
-              Registrar gasto
-            </button>
-            <button
-              type="button"
-              onClick={handleDismissNightly}
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-stone-300 transition hover:border-white/20"
-            >
-              Nada que registrar hoy
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

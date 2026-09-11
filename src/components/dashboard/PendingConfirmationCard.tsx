@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { confirmTransaction, moveTransactionToSpace, rejectPendingTransaction } from '@/actions/confirm';
 import { getReceiptSignedUrl } from '@/actions/dashboard';
 import { saveClassificationHint } from '@/actions/classification';
+import { getConfirmationInsight } from '@/actions/insights';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import type { TransactionType } from '@/domain/types/capture';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
@@ -39,11 +40,14 @@ export function PendingConfirmationCard({
   const [clarificationAnswer, setClarificationAnswer] = useState('');
   const [spaceSuggestionDismissed, setSpaceSuggestionDismissed] = useState(false);
   const [tagsInput, setTagsInput] = useState(transaction.tags.join(', '));
-  // Optimista: al confirmar/descartar/mover, la tarjeta se desvanece de
-  // inmediato en vez de esperar a que router.refresh() vuelva a traer la
-  // lista del servidor -- la sincronizacion real sigue pasando, solo que en
-  // segundo plano, para que la espera nunca se sienta muerta.
-  const [isRemoving, setIsRemoving] = useState(false);
+  // Optimista de verdad: al tocar Confirmar/Descartar, la tarjeta cambia a
+  // un estado de "listo" DE INMEDIATO, antes de que la mutacion real llegue
+  // a Supabase -- nunca se espera la red para que la interfaz reaccione. Si
+  // la mutacion en segundo plano falla, se revierte (vuelve el formulario)
+  // y se explica por que ahi mismo, sin popups ni alertas intrusivas.
+  const [optimisticOutcome, setOptimisticOutcome] = useState<{ kind: 'confirm' | 'reject' | 'move'; message: string } | null>(
+    null,
+  );
 
   const [type, setType] = useState<TransactionType>(transaction.type);
   const [accountId, setAccountId] = useState(transaction.accountId ?? '');
@@ -73,17 +77,14 @@ export function PendingConfirmationCard({
     !transaction.suggestedSpaceId;
   const [expanded, setExpanded] = useState(!isHighConfidence);
 
-  function removeOptimistically() {
-    setIsRemoving(true);
-    router.refresh();
-  }
-
   function handleConfirm() {
     setError(null);
     const parsedAmount = Number(amount);
     // "Cuenta" NUNCA bloquea: si queda vacia, el servidor asigna la primera
-    // cuenta del espacio (o crea "Efectivo" si no hay ninguna). Un transfer
-    // si necesita las dos cuentas explicitas -- ahi no hay forma segura de adivinar.
+    // cuenta del espacio (o crea "Efectivo" si no hay ninguna, ver
+    // resolveAccountId en actions/confirm.ts -- funciona exista o no la
+    // migracion 0012_default_account_per_space). Un transfer si necesita
+    // las dos cuentas explicitas -- ahi no hay forma segura de adivinar.
     if (type === 'transfer' && (!accountId || !destinationAccountId || destinationAccountId === accountId)) {
       setError('Selecciona cuenta origen y destino, distintas entre si.');
       return;
@@ -93,6 +94,13 @@ export function PendingConfirmationCard({
       return;
     }
 
+    const transactionIso = new Date(date).toISOString();
+    const finalCategoryId = type === 'transfer' ? null : categoryId || null;
+
+    // Optimista: la tarjeta pasa a su estado de "listo" ya mismo, con un
+    // mensaje generico que no depende de ninguna respuesta de red.
+    setOptimisticOutcome({ kind: 'confirm', message: 'Listo. Un pendiente menos en tu espacio.' });
+
     startTransition(async () => {
       const result = await confirmTransaction({
         transaction_id: transaction.id,
@@ -100,12 +108,12 @@ export function PendingConfirmationCard({
         type,
         account_id: accountId || '',
         destination_account_id: type === 'transfer' ? destinationAccountId : null,
-        category_id: type === 'transfer' ? null : categoryId || null,
+        category_id: finalCategoryId,
         amount_original: parsedAmount,
         currency_original: currency,
         exchange_rate: Number(exchangeRate) || 1,
         description: description || null,
-        transaction_date: new Date(date).toISOString(),
+        transaction_date: transactionIso,
         receipt_id: transaction.receiptId,
         tags: tagsInput
           .split(',')
@@ -114,22 +122,40 @@ export function PendingConfirmationCard({
       });
 
       if (!result.success) {
+        // Rollback silencioso: vuelve el formulario con lo que la persona ya
+        // habia editado, y explica que paso ahi mismo -- nada de alertas.
+        setOptimisticOutcome(null);
         setError(result.error);
         return;
       }
-      removeOptimistically();
+
+      router.refresh();
+
+      // El insight es una mejora sobre el mensaje generico, no un requisito
+      // para que la tarjeta reaccione -- si tarda o falla, el mensaje
+      // generico ya mostrado sigue siendo perfectamente valido.
+      getConfirmationInsight({
+        spaceId,
+        type,
+        categoryId: finalCategoryId,
+        transactionDate: transactionIso,
+      })
+        .then((message) => setOptimisticOutcome((current) => (current?.kind === 'confirm' ? { ...current, message } : current)))
+        .catch(() => {});
     });
   }
 
   function handleReject() {
     setError(null);
+    setOptimisticOutcome({ kind: 'reject', message: 'Descartado. Menos ruido en tu bandeja.' });
     startTransition(async () => {
       const result = await rejectPendingTransaction(transaction.id, spaceId);
       if (!result.success) {
+        setOptimisticOutcome(null);
         setError(result.error);
         return;
       }
-      removeOptimistically();
+      router.refresh();
     });
   }
 
@@ -174,13 +200,15 @@ export function PendingConfirmationCard({
   function handleMoveToSuggestedSpace() {
     if (!transaction.suggestedSpaceId) return;
     setError(null);
+    setOptimisticOutcome({ kind: 'move', message: `Movido a ${transaction.suggestedSpaceName}.` });
     startTransition(async () => {
       const result = await moveTransactionToSpace(transaction.id, spaceId, transaction.suggestedSpaceId!);
       if (!result.success) {
+        setOptimisticOutcome(null);
         setError(result.error);
         return;
       }
-      removeOptimistically();
+      router.refresh();
     });
   }
 
@@ -197,13 +225,37 @@ export function PendingConfirmationCard({
     });
   }
 
+  // Vista optimista: reemplaza la tarjeta editable de inmediato al tocar
+  // Confirmar/Descartar/Mover, sin esperar la respuesta del servidor. Sigue
+  // viva unos instantes (el mensaje puede mejorar con el insight real) hasta
+  // que router.refresh() trae la lista actualizada y este componente deja de
+  // montarse -- nunca desaparece en silencio, siempre "contesta" algo.
+  if (optimisticOutcome) {
+    const isNeutral = optimisticOutcome.kind === 'reject';
+    return (
+      <div
+        className={cn(
+          'animate-fade-scale-in flex items-center gap-3 rounded-xl border p-5 transition-all duration-300',
+          isNeutral ? 'border-white/10 bg-elevated' : 'border-growth/25 bg-growth/5',
+        )}
+      >
+        <span
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+            isNeutral ? 'bg-white/5 text-stone-400' : 'bg-growth/15 text-growth',
+          )}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
+          </svg>
+        </span>
+        <p className="text-sm text-stone-100">{optimisticOutcome.message}</p>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        'animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-all duration-300',
-        isRemoving ? 'pointer-events-none scale-95 opacity-0' : 'hover:border-gold/15',
-      )}
-    >
+    <div className="animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-all duration-300 hover:border-gold/15">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-stone-100">{transaction.description ?? 'Movimiento sin descripcion'}</p>

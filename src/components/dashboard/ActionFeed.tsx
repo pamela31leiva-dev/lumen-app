@@ -1,5 +1,6 @@
 import { ProactiveAssistantBanner } from '@/components/dashboard/ProactiveAssistantBanner';
 import { PendingConfirmationCard } from '@/components/dashboard/PendingConfirmationCard';
+import { DailyCheckInBubble } from '@/components/dashboard/DailyCheckInBubble';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import type { RecurringObligation } from '@/domain/types/analytics';
 
@@ -38,13 +39,10 @@ export function ActionFeed({
         Requiere tu atencion {hasPending && `(${pendingTransactions.length})`}
       </h2>
 
+      <DailyCheckInBubble spaceId={spaceId} hasActivityToday={hasActivityToday} />
+
       <div className="flex flex-col gap-4">
-        <ProactiveAssistantBanner
-          spaceId={spaceId}
-          baseCurrency={baseCurrency}
-          recurringObligations={recurringObligations}
-          hasActivityToday={hasActivityToday}
-        />
+        <ProactiveAssistantBanner spaceId={spaceId} baseCurrency={baseCurrency} recurringObligations={recurringObligations} />
 
         {pendingTransactions.map((transaction) => (
           <PendingConfirmationCard

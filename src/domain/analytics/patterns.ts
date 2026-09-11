@@ -110,3 +110,27 @@ export function hasTransactionOnDate(transactionDates: string[], referenceDate: 
   const refKey = referenceDate.toISOString().slice(0, 10);
   return transactionDates.some((iso) => iso.slice(0, 10) === refKey);
 }
+
+/**
+ * "Racha de Conciencia": dias consecutivos con al menos un movimiento
+ * confirmado, contando hacia atras desde hoy. Si hoy todavia no tiene
+ * ningun movimiento, cuenta desde ayer -- de otro modo la racha se veria en
+ * cero cada mañana antes de que la persona alcance a registrar algo, lo que
+ * se sentiria como un castigo en vez de un reconocimiento del habito.
+ */
+export function computeActivityStreak(transactionDates: string[], referenceDate: Date = new Date()): number {
+  const activeDays = new Set(transactionDates.map((iso) => iso.slice(0, 10)));
+  const cursor = new Date(referenceDate);
+  const todayKey = cursor.toISOString().slice(0, 10);
+
+  if (!activeDays.has(todayKey)) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+
+  let streak = 0;
+  while (activeDays.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  return streak;
+}

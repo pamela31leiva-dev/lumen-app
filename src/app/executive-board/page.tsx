@@ -72,6 +72,7 @@ export default async function ExecutiveBoardPage() {
           totalBalance={totalBalance}
           hasRealAssets={balances.hasRealAssets}
           monthlyNetFlow={monthlyNetFlow}
+          activityStreakDays={proactiveInsights.activityStreakDays}
         />
 
         {/* b) Feed de Decisiones Inteligentes */}

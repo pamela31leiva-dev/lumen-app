@@ -1,7 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
-import { detectRecurringObligations, hasTransactionOnDate } from '@/domain/analytics/patterns';
+import { computeActivityStreak, detectRecurringObligations, hasTransactionOnDate } from '@/domain/analytics/patterns';
 import type { ProactiveInsights, RecurringObligation } from '@/domain/types/analytics';
 
 const LOOKBACK_MONTHS = 12;
@@ -26,7 +26,6 @@ export async function getProactiveInsights(spaceId: string): Promise<ProactiveIn
       .select('description, amount_original, type, transaction_date')
       .eq('space_id', spaceId)
       .eq('status', 'confirmed')
-      .eq('type', 'expense')
       .gte('transaction_date', lookbackDate.toISOString())
       .order('transaction_date', { ascending: true }),
     supabase.from('transactions').select('transaction_date').eq('space_id', spaceId).gte('transaction_date', todayStart.toISOString()),
@@ -45,8 +44,9 @@ export async function getProactiveInsights(spaceId: string): Promise<ProactiveIn
   );
 
   const hasActivityToday = hasTransactionOnDate((todayRows ?? []).map((row) => row.transaction_date));
+  const activityStreakDays = computeActivityStreak((confirmedRows ?? []).map((row) => row.transaction_date));
 
-  return { recurringObligations, hasActivityToday };
+  return { recurringObligations, hasActivityToday, activityStreakDays };
 }
 
 /**
