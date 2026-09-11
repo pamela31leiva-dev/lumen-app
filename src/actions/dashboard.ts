@@ -6,6 +6,7 @@ import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import type {
   AccountBalancesData,
   CategoryOption,
+  IdentitySnapshot,
   ImpactSummary,
   ImpactTopCategory,
   MemberRole,
@@ -23,6 +24,7 @@ interface SpaceMembershipRow {
     name: string;
     type: SpaceType;
     base_currency: string;
+    is_pro: boolean;
   } | null;
 }
 
@@ -36,7 +38,7 @@ export async function getUserSpaces(): Promise<SpaceSummary[]> {
 
   const { data, error } = await supabase
     .from('space_members')
-    .select('role, space:spaces(id, name, type, base_currency)')
+    .select('role, space:spaces(id, name, type, base_currency, is_pro)')
     .eq('user_id', user.id)
     .returns<SpaceMembershipRow[]>();
 
@@ -53,6 +55,7 @@ export async function getUserSpaces(): Promise<SpaceSummary[]> {
       type: row.space.type,
       baseCurrency: row.space.base_currency,
       role: row.role,
+      isPro: row.space.is_pro,
     }));
 }
 
@@ -238,7 +241,9 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
 
   const { data, error } = await supabase
     .from('transactions')
-    .select('id, type, description, amount_original, currency_original, transaction_date, tags, category:categories(name)')
+    .select(
+      'id, type, description, amount_original, currency_original, transaction_date, tags, category_id, category:categories(name)',
+    )
     .eq('space_id', spaceId)
     .eq('status', 'confirmed')
     .order('transaction_date', { ascending: false })
@@ -252,6 +257,7 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
         currency_original: string;
         transaction_date: string;
         tags: string[] | null;
+        category_id: string | null;
         category: { name: string } | null;
       }[]
     >();
@@ -267,6 +273,7 @@ export async function getTransactionHistory(spaceId: string, limit = 50): Promis
     description: row.description,
     amountOriginal: Number(row.amount_original),
     currencyOriginal: row.currency_original,
+    categoryId: row.category_id,
     categoryName: row.category?.name ?? null,
     transactionDate: row.transaction_date,
     tags: Array.isArray(row.tags) ? row.tags : [],
@@ -366,6 +373,55 @@ export async function getImpactSummary(spaceId: string, months = 12): Promise<Im
     busiestMonth,
     activeDayCount: activeDays.size,
   };
+}
+
+/**
+ * "Asi te conozco" -- refuerzo del Clarity Loop mostrando lo que Lumen ya
+ * aprendio de este espacio: las clarificaciones que el usuario mismo
+ * respondio (classification_hints, ya usadas para no repreguntar) y su
+ * categoria de gasto mas frecuente entre lo ya CONFIRMADO. Nada inventado:
+ * si no hay suficiente historial, los campos simplemente quedan vacios/null.
+ */
+export async function getIdentitySnapshot(spaceId: string): Promise<IdentitySnapshot> {
+  const supabase = await getSupabaseServerClient();
+
+  const [{ data: hintRows }, { data: txRows }] = await Promise.all([
+    supabase
+      .from('classification_hints')
+      .select('question, answer')
+      .eq('space_id', spaceId)
+      .order('created_at', { ascending: false })
+      .limit(6),
+    supabase
+      .from('transactions')
+      .select('amount_base, category:categories(name)')
+      .eq('space_id', spaceId)
+      .eq('status', 'confirmed')
+      .eq('type', 'expense')
+      .returns<{ amount_base: number; category: { name: string } | null }[]>(),
+  ]);
+
+  const learnedHints = (hintRows ?? []).map((h) => ({ question: h.question, answer: h.answer }));
+
+  const totalsByCategory = new Map<string, number>();
+  let totalExpense = 0;
+  for (const row of txRows ?? []) {
+    const amount = Number(row.amount_base);
+    totalExpense += amount;
+    const name = row.category?.name;
+    if (!name) continue;
+    totalsByCategory.set(name, (totalsByCategory.get(name) ?? 0) + amount);
+  }
+
+  let topCategoryName: string | null = null;
+  let topCategoryShare: number | null = null;
+  if (totalsByCategory.size > 0 && totalExpense > 0) {
+    const [name, total] = Array.from(totalsByCategory.entries()).sort((a, b) => b[1] - a[1])[0];
+    topCategoryName = name;
+    topCategoryShare = Math.round((total / totalExpense) * 100);
+  }
+
+  return { learnedHints, topCategoryName, topCategoryShare };
 }
 
 /** Plan del usuario autenticado. Sin fila (usuarios previos al 0008 no respaldados) = Gratis/activo por default. */

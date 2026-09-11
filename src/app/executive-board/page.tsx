@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getAccountBalances, getCategories, getMonthlyNetFlow, getPendingTransactions, getUserSpaces } from '@/actions/dashboard';
-import { getBusinessCashInsight, getProactiveInsights } from '@/actions/analytics';
+import { getBusinessCashInsight, getCashFlowProjection, getProactiveInsights } from '@/actions/analytics';
+import { getSpaceMembers } from '@/actions/settings';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -12,6 +13,9 @@ import { CommandConsole } from '@/components/dashboard/CommandConsole';
 import { LazyBalancesGrid } from '@/components/dashboard/LazyBalancesGrid';
 import { SaveSpaceBanner } from '@/components/dashboard/SaveSpaceBanner';
 import { BusinessCashCard } from '@/components/dashboard/BusinessCashCard';
+import { BusinessProUpsell } from '@/components/dashboard/BusinessProUpsell';
+import { CashFlowProjectionCard } from '@/components/dashboard/CashFlowProjectionCard';
+import { RealtimeSpaceSync } from '@/components/dashboard/RealtimeSpaceSync';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -48,20 +52,34 @@ export default async function ExecutiveBoardPage() {
   const cookieSpaceId = cookieStore.get(ACTIVE_SPACE_COOKIE)?.value ?? null;
   const activeSpace = spaces.find((s) => s.id === cookieSpaceId) ?? spaces[0];
 
-  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow, businessCashInsight] = await Promise.all([
+  const [balances, pendingTransactions, categories, proactiveInsights, monthlyNetFlow, spaceMembers] = await Promise.all([
     getAccountBalances(activeSpace.id),
     getPendingTransactions(activeSpace.id),
     getCategories(activeSpace.id),
     getProactiveInsights(activeSpace.id),
     getMonthlyNetFlow(activeSpace.id),
-    getBusinessCashInsight(activeSpace.id),
+    getSpaceMembers(activeSpace.id),
   ]);
 
   const totalBalance = balances.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
+  // Monetizacion asimetrica: la analitica avanzada de negocio (Picos de
+  // Venta, Proyeccion de Caja) solo se restringe en espacios type='business'
+  // sin is_pro. Personal/Familiar/Proyecto siempre la tienen gratis.
+  const businessAnalyticsLocked = activeSpace.type === 'business' && !activeSpace.isPro;
+  const [businessCashInsight, cashFlowProjection] = businessAnalyticsLocked
+    ? [null, null]
+    : await Promise.all([getBusinessCashInsight(activeSpace.id), getCashFlowProjection(activeSpace.id, totalBalance)]);
+
   return (
     <main className="min-h-screen bg-obsidian text-stone-100">
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="executive-board" />
+
+      {/* Espacios colaborativos: sincroniza el tablero en vivo cuando otro
+          miembro registra o confirma algo en este mismo espacio. Invisible
+          por defecto -- solo aparece un aviso breve cuando de verdad pasa
+          algo, nunca un indicador de presencia permanente. */}
+      <RealtimeSpaceSync spaceId={activeSpace.id} currentUserId={user.id} members={spaceMembers} />
 
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 pb-24 sm:pb-8">
         {/* Modo Fantasma: invita, nunca exige, a guardar el espacio una vez
@@ -82,10 +100,20 @@ export default async function ExecutiveBoardPage() {
           activityStreakDays={proactiveInsights.activityStreakDays}
         />
 
-        {/* Inteligencia para Microemprendimientos: solo existe cuando ya hay
-            suficiente historial de negocio -- Cero Ruido para espacios
-            puramente personales. */}
-        {businessCashInsight && <BusinessCashCard insight={businessCashInsight} baseCurrency={balances.baseCurrency} />}
+        {/* Inteligencia para Microemprendimientos + Proyeccion de Caja:
+            solo existen cuando ya hay suficiente historial -- Cero Ruido
+            para espacios sin datos todavia. En espacios de Negocio sin Pro,
+            un unico upsell reemplaza ambas (nunca bloquea lo basico). */}
+        {businessAnalyticsLocked ? (
+          <BusinessProUpsell />
+        ) : (
+          <>
+            {businessCashInsight && <BusinessCashCard insight={businessCashInsight} baseCurrency={balances.baseCurrency} />}
+            {cashFlowProjection && cashFlowProjection.upcomingEvents.length > 0 && (
+              <CashFlowProjectionCard projection={cashFlowProjection} baseCurrency={balances.baseCurrency} />
+            )}
+          </>
+        )}
 
         {/* b) Feed de Decisiones Inteligentes */}
         <ActionFeed

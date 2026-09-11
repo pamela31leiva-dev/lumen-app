@@ -12,6 +12,8 @@ export interface SpaceSummary {
   type: SpaceType;
   baseCurrency: string;
   role: MemberRole;
+  /** Solo relevante para espacios type='business': desbloquea analitica de negocio avanzada (Picos de Venta, proyeccion, exportacion). Activacion manual, sin pasarela de pago todavia. */
+  isPro: boolean;
 }
 
 /** Fila de la vista determinista `account_balances` (nunca calculada por IA). */
@@ -78,6 +80,7 @@ export interface TransactionHistoryItem {
   description: string | null;
   amountOriginal: number;
   currencyOriginal: string;
+  categoryId: string | null;
   categoryName: string | null;
   transactionDate: string;
   tags: string[];
@@ -127,6 +130,20 @@ export interface CategoryOption {
   name: string;
   kind: 'income' | 'expense';
   isSystem: boolean;
+}
+
+/**
+ * "Asi te conozco" -- lectura calida de lo que Lumen ya aprendio de este
+ * espacio, para reforzar el habito (Clarity Loop). Se arma solo con datos ya
+ * reales: aprendizajes de clasificacion que el usuario mismo respondio
+ * (classification_hints) y la categoria de gasto mas frecuente ya
+ * confirmada. Nunca es una inferencia psicologica inventada.
+ */
+export interface IdentitySnapshot {
+  learnedHints: { question: string; answer: string }[];
+  topCategoryName: string | null;
+  /** 0-100, que porcentaje del gasto confirmado cae en topCategoryName. */
+  topCategoryShare: number | null;
 }
 
 /** Miembro de un espacio para la vista de /settings. El nombre/correo solo es visible entre compania de espacio (ver 0004). */

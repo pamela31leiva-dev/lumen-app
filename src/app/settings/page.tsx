@@ -1,4 +1,4 @@
-import { getAccountBalances, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
+import { getAccountBalances, getCategories, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
 import { getSpaceMembers } from '@/actions/settings';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -8,6 +8,7 @@ import { BalancesGrid } from '@/components/dashboard/BalancesGrid';
 import { SessionPreferenceInfo } from '@/components/dashboard/SessionPreferenceInfo';
 import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
 import { ImpactSummaryModal } from '@/components/dashboard/ImpactSummaryModal';
+import { IdentitySnapshotModal } from '@/components/dashboard/IdentitySnapshotModal';
 import { ExportModal } from '@/components/dashboard/ExportModal';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
@@ -30,14 +31,18 @@ const PLAN_LABEL: Record<PlanTier, string> = {
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances, transactionHistory, subscription] = await Promise.all([
+  const [members, balances, transactionHistory, subscription, categories] = await Promise.all([
     getSpaceMembers(activeSpace.id),
     getAccountBalances(activeSpace.id),
     getTransactionHistory(activeSpace.id),
     getMySubscription(),
+    getCategories(activeSpace.id),
   ]);
 
   const canEditSpace = activeSpace.role === 'owner' || activeSpace.role === 'admin';
+  // Monetizacion asimetrica: solo los espacios de Negocio sin Pro pierden la
+  // exportacion para contadores. Personal/Familiar/Proyecto siempre la tienen.
+  const exportRequiresPro = activeSpace.type === 'business' && !activeSpace.isPro;
 
   return (
     <main className="min-h-screen bg-obsidian text-stone-100">
@@ -92,11 +97,17 @@ export default async function SettingsPage() {
             <h2 className="text-sm font-medium text-stone-200">Historial de movimientos</h2>
             <div className="flex items-center gap-3">
               <span className="text-xs text-stone-500">Ultimos {transactionHistory.length}</span>
+              <IdentitySnapshotModal spaceId={activeSpace.id} />
               <ImpactSummaryModal spaceId={activeSpace.id} />
             </div>
           </div>
           <div className="mt-3">
-            <TransactionHistoryList spaceId={activeSpace.id} items={transactionHistory} canDelete={canEditSpace} />
+            <TransactionHistoryList
+              spaceId={activeSpace.id}
+              items={transactionHistory}
+              categories={categories}
+              canDelete={canEditSpace}
+            />
           </div>
         </section>
 
@@ -106,7 +117,13 @@ export default async function SettingsPage() {
               <h2 className="text-sm font-medium text-stone-200">Exportar reportes</h2>
               <p className="mt-1 text-xs text-stone-500">Excel de grado profesional para tu contador o revision propia.</p>
             </div>
-            <ExportModal spaceId={activeSpace.id} />
+            {exportRequiresPro ? (
+              <span className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-stone-500">
+                Disponible con Lumen Pro
+              </span>
+            ) : (
+              <ExportModal spaceId={activeSpace.id} />
+            )}
           </div>
         </section>
 

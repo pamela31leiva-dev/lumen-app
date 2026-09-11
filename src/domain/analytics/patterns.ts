@@ -1,4 +1,11 @@
-import type { BusinessCashInsight, RecurringObligation, TransactionForAnalytics } from '@/domain/types/analytics';
+import type {
+  BusinessCashInsight,
+  CashFlowProjection,
+  ProjectedCashEvent,
+  RecurringCashEvent,
+  RecurringObligation,
+  TransactionForAnalytics,
+} from '@/domain/types/analytics';
 
 /**
  * Deteccion de recurrencias — heuristica deliberadamente simple para un
@@ -103,6 +110,128 @@ export function detectRecurringObligations(
   }
 
   return obligations.sort((a, b) => b.daysOverdue - a.daysOverdue);
+}
+
+const PROJECTION_WINDOW_DAYS = 30;
+const MAX_MONTH_ROLL_GUARD = 24;
+
+/**
+ * Deteccion de ingresos y gastos recurrentes para PROYECTAR hacia adelante
+ * (a diferencia de detectRecurringObligations, que solo mira gastos vencidos
+ * hacia atras). Misma heuristica base (2+ ocurrencias, montos estables,
+ * espaciado ~mensual), pero aqui "nextExpectedDate" siempre avanza hasta la
+ * proxima ocurrencia FUTURA real desde referenceDate -- si alguien no ha
+ * pagado algo en 3 meses, la proyeccion debe usar el proximo mes esperado,
+ * no un mes ya pasado. Es una funcion deliberadamente separada de
+ * detectRecurringObligations en vez de compartir codigo, porque cambiar ese
+ * "avance hacia el futuro" ahi rompería la semantica de dias-vencidos que ya
+ * usa ProactiveAssistantBanner.
+ */
+export function detectRecurringCashEvents(
+  transactions: TransactionForAnalytics[],
+  referenceDate: Date = new Date(),
+): RecurringCashEvent[] {
+  const groups = new Map<string, TransactionForAnalytics[]>();
+
+  for (const tx of transactions) {
+    if (tx.type === 'transfer' || !tx.description) continue;
+    const key = normalizeDescription(tx.description);
+    if (!key) continue;
+    const list = groups.get(key) ?? [];
+    list.push(tx);
+    groups.set(key, list);
+  }
+
+  const events: RecurringCashEvent[] = [];
+
+  for (const [key, txs] of groups) {
+    if (txs.length < MIN_OCCURRENCES) continue;
+
+    const sorted = [...txs].sort(
+      (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
+    );
+
+    // Si el mismo patron de descripcion mezcla ingreso y gasto, no es un
+    // patron confiable para proyectar -- se descarta entero.
+    const type = sorted[0].type;
+    if (!sorted.every((t) => t.type === type)) continue;
+
+    const amounts = sorted.map((t) => t.amountOriginal);
+    const maxAmount = Math.max(...amounts);
+    const minAmount = Math.min(...amounts);
+    if (minAmount <= 0 || maxAmount / minAmount > AMOUNT_TOLERANCE_RATIO) continue;
+
+    let hasMonthlyGap = false;
+    for (let i = 1; i < sorted.length; i++) {
+      const gapDays =
+        (new Date(sorted[i].transactionDate).getTime() - new Date(sorted[i - 1].transactionDate).getTime()) / DAY_MS;
+      if (gapDays >= MIN_GAP_DAYS && gapDays <= MAX_GAP_DAYS) {
+        hasMonthlyGap = true;
+        break;
+      }
+    }
+    if (!hasMonthlyGap) continue;
+
+    const last = sorted[sorted.length - 1];
+    const expectedDay = Math.round(median(sorted.map((t) => dayOfMonth(t.transactionDate))));
+    const averageAmount = Math.round((amounts.reduce((sum, a) => sum + a, 0) / amounts.length) * 100) / 100;
+
+    let nextExpected = addApproxMonth(last.transactionDate, expectedDay);
+    for (let guard = 0; nextExpected.getTime() < referenceDate.getTime() && guard < MAX_MONTH_ROLL_GUARD; guard++) {
+      nextExpected = addApproxMonth(nextExpected.toISOString(), expectedDay);
+    }
+
+    events.push({
+      key,
+      description: last.description ?? key,
+      type,
+      averageAmount,
+      nextExpectedDate: nextExpected.toISOString(),
+    });
+  }
+
+  return events;
+}
+
+/**
+ * Proyeccion deterministica de caja: saldo actual + cada evento recurrente
+ * detectado que caiga dentro de la ventana (30 dias por defecto), aplicado
+ * en orden cronologico. Nunca inventa gasto/ingreso no recurrente -- si no
+ * hay patrones, la proyeccion es simplemente el saldo actual sostenido.
+ * "lowestPoint" es la respuesta real a "¿me alcanza?": el momento mas
+ * ajustado dentro de la ventana, no solo el numero final.
+ */
+export function computeCashFlowProjection(
+  currentBalance: number,
+  recurringEvents: RecurringCashEvent[],
+  referenceDate: Date = new Date(),
+  horizonDays: number = PROJECTION_WINDOW_DAYS,
+): CashFlowProjection {
+  const windowEnd = new Date(referenceDate.getTime() + horizonDays * DAY_MS);
+
+  const withinWindow = recurringEvents
+    .filter((e) => new Date(e.nextExpectedDate) <= windowEnd)
+    .sort((a, b) => new Date(a.nextExpectedDate).getTime() - new Date(b.nextExpectedDate).getTime());
+
+  let runningBalance = currentBalance;
+  const upcomingEvents: ProjectedCashEvent[] = [];
+  let lowestPoint: { date: string; balance: number } | null = null;
+
+  for (const event of withinWindow) {
+    const delta = event.type === 'income' ? event.averageAmount : -event.averageAmount;
+    runningBalance += delta;
+    upcomingEvents.push({ ...event, balanceAfter: runningBalance });
+    if (!lowestPoint || runningBalance < lowestPoint.balance) {
+      lowestPoint = { date: event.nextExpectedDate, balance: runningBalance };
+    }
+  }
+
+  return {
+    currentBalance,
+    projectedBalance30d: runningBalance,
+    upcomingEvents,
+    lowestPoint,
+  };
 }
 
 /** true si alguna de las fechas dadas cae en el mismo dia (UTC) que referenceDate. */

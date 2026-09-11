@@ -952,4 +952,19 @@ alter table public.transactions add column if not exists is_business boolean not
 drop index if exists idx_transactions_business;
 create index idx_transactions_business on public.transactions (space_id, is_business) where is_business;
 
+-- 0015: is_pro por espacio (monetizacion) + Realtime en transactions (espacios colaborativos) --
+alter table public.spaces add column if not exists is_pro boolean not null default false;
+
+alter table public.transactions replica identity full;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'transactions'
+  ) then
+    alter publication supabase_realtime add table public.transactions;
+  end if;
+end $$;
+
 commit;

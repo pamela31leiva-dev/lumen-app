@@ -1,8 +1,15 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
-import { computeActivityStreak, computeBusinessCashInsight, detectRecurringObligations, hasTransactionOnDate } from '@/domain/analytics/patterns';
-import type { BusinessCashInsight, ProactiveInsights, RecurringObligation } from '@/domain/types/analytics';
+import {
+  computeActivityStreak,
+  computeBusinessCashInsight,
+  computeCashFlowProjection,
+  detectRecurringCashEvents,
+  detectRecurringObligations,
+  hasTransactionOnDate,
+} from '@/domain/analytics/patterns';
+import type { BusinessCashInsight, CashFlowProjection, ProactiveInsights, RecurringObligation } from '@/domain/types/analytics';
 
 const LOOKBACK_MONTHS = 12;
 const BUSINESS_LOOKBACK_DAYS = 120;
@@ -83,6 +90,44 @@ export async function getBusinessCashInsight(spaceId: string): Promise<BusinessC
       transactionDate: row.transaction_date,
     })),
   );
+}
+
+/**
+ * Proyeccion de Caja a 30 Dias -- "¿como estara mi caja el proximo mes?".
+ * currentBalance viene ya calculado por getAccountBalances (nunca se
+ * recalcula aqui, para no duplicar la fuente de verdad del saldo). Solo
+ * proyecta patrones recurrentes ya detectados sobre datos CONFIRMADOS de los
+ * ultimos 12 meses -- cero IA, cero prediccion inventada.
+ */
+export async function getCashFlowProjection(spaceId: string, currentBalance: number): Promise<CashFlowProjection> {
+  const supabase = await getSupabaseServerClient();
+
+  const lookbackDate = new Date();
+  lookbackDate.setUTCMonth(lookbackDate.getUTCMonth() - LOOKBACK_MONTHS);
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('description, amount_original, type, transaction_date')
+    .eq('space_id', spaceId)
+    .eq('status', 'confirmed')
+    .gte('transaction_date', lookbackDate.toISOString())
+    .order('transaction_date', { ascending: true });
+
+  if (error) {
+    console.error('Error al leer historial para proyeccion de caja:', error);
+    return { currentBalance, projectedBalance30d: currentBalance, upcomingEvents: [], lowestPoint: null };
+  }
+
+  const recurringEvents = detectRecurringCashEvents(
+    (data ?? []).map((row) => ({
+      description: row.description,
+      amountOriginal: Number(row.amount_original),
+      type: row.type,
+      transactionDate: row.transaction_date,
+    })),
+  );
+
+  return computeCashFlowProjection(currentBalance, recurringEvents);
 }
 
 /**

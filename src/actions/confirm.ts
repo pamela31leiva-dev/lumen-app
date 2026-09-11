@@ -186,6 +186,82 @@ export async function deleteTransaction(
 }
 
 /**
+ * Recategorizacion retroactiva en lote: corrige la categoria de N
+ * movimientos CONFIRMADOS de una sola vez, en vez de abrir cada uno por
+ * separado. category_id=null es valido (quita la categoria). Nunca toca
+ * pendientes -- eso ya se corrige en el flujo normal de confirmacion.
+ */
+export async function bulkUpdateCategory(
+  transactionIds: string[],
+  spaceId: string,
+  categoryId: string | null,
+): Promise<{ success: true; updatedCount: number } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+  if (transactionIds.length === 0) {
+    return { success: false, error: 'Selecciona al menos un movimiento.' };
+  }
+
+  const { error, count } = await supabase
+    .from('transactions')
+    .update({ category_id: categoryId }, { count: 'exact' })
+    .eq('space_id', spaceId)
+    .eq('status', 'confirmed')
+    .in('id', transactionIds);
+
+  if (error) {
+    console.error('Error al recategorizar en lote:', error);
+    return { success: false, error: 'No se pudo actualizar la categoria de esos movimientos.' };
+  }
+
+  return { success: true, updatedCount: count ?? 0 };
+}
+
+/**
+ * Borrado en lote -- mismo permiso que deleteTransaction (RLS
+ * transactions_delete_admin: solo owner/admin), aplicado a varias filas de
+ * una vez para eliminar la friccion de confirmar una por una.
+ */
+export async function bulkDeleteTransactions(
+  transactionIds: string[],
+  spaceId: string,
+): Promise<{ success: true; deletedCount: number } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+  if (transactionIds.length === 0) {
+    return { success: false, error: 'Selecciona al menos un movimiento.' };
+  }
+
+  const { error, count } = await supabase
+    .from('transactions')
+    .delete({ count: 'exact' })
+    .eq('space_id', spaceId)
+    .in('id', transactionIds);
+
+  if (error) {
+    console.error('Error al eliminar en lote:', error);
+    return { success: false, error: 'No se pudieron eliminar esos movimientos.' };
+  }
+  if (!count) {
+    return { success: false, error: 'No tienes permiso para eliminar estos movimientos (requiere rol Owner o Admin).' };
+  }
+
+  return { success: true, deletedCount: count };
+}
+
+/**
  * Mueve una transaccion PENDIENTE al espacio que la IA sugirio (ver
  * suggested_space_name en AiExtractionResult) cuando el texto claramente
  * pertenecia a otro contexto del usuario. Solo aplica a pendientes: mover
