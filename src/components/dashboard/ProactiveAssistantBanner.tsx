@@ -123,10 +123,15 @@ export function ProactiveAssistantBanner({
 
       {showNightlyCheckIn && (
         <div className="rounded-xl border border-white/10 bg-elevated p-4">
-          <p className="text-sm text-stone-100">
-            Hoy no vimos ningun movimiento registrado en este espacio. ¿No tuviste egresos, o se te paso algo?
-          </p>
+          <p className="text-sm text-stone-100">¿Hubo movimientos hoy en este espacio, ingresos o egresos?</p>
           <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={scrollToQuickCapture}
+              className="rounded-lg bg-wealth px-3 py-1.5 text-xs font-medium text-white transition hover:bg-wealth-hover"
+            >
+              Registrar ingreso
+            </button>
             <button
               type="button"
               onClick={scrollToQuickCapture}
@@ -139,7 +144,7 @@ export function ProactiveAssistantBanner({
               onClick={handleDismissNightly}
               className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-stone-300 transition hover:border-white/20"
             >
-              Hoy no gaste
+              Nada que registrar hoy
             </button>
           </div>
         </div>
