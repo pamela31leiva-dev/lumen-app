@@ -70,6 +70,39 @@ export async function renameSpace(
 }
 
 /**
+ * Preferencias de Alertas: cuantos dias antes del vencimiento una factura se
+ * marca "por vencer" (BillAlerts, ActionFeed) -- antes fijo en 3 dias para
+ * todo el mundo. RLS (spaces_update_admin) exige owner/admin, igual que
+ * renameSpace.
+ */
+export async function updateAlertPreferences(
+  spaceId: string,
+  billReminderDays: number,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+
+  if (!Number.isInteger(billReminderDays) || billReminderDays < 1 || billReminderDays > 30) {
+    return { success: false, error: 'El umbral debe ser un numero entero entre 1 y 30 dias.' };
+  }
+
+  const { error } = await supabase.from('spaces').update({ bill_reminder_days: billReminderDays }).eq('id', spaceId);
+
+  if (error) {
+    console.error('Error al actualizar preferencias de alertas:', error);
+    return { success: false, error: 'No se pudo guardar. Verifica que tengas permisos de owner o admin.' };
+  }
+
+  return { success: true };
+}
+
+/**
  * Añade a un colaborador existente de Lumen a este espacio por su correo.
  * No envia ningun email real (no hay servicio de envio conectado): la
  * persona invitada debe ya tener cuenta en Lumen. Buscar el perfil por
@@ -124,6 +157,40 @@ export async function inviteMemberByEmail(
 }
 
 /**
+ * Aviso en vivo de que se le revoco el acceso a alguien -- ademas de que RLS
+ * ya bloquea cualquier consulta futura de esa persona (la garantia real de
+ * seguridad, funciona aunque este broadcast fallara), esto hace que una
+ * pestaña que la persona removida tenga abierta EN ESE MOMENTO se cierre de
+ * inmediato en vez de esperar a que intente algo y reciba un error de RLS.
+ * Best-effort con timeout corto: si la conexion Realtime no responde rapido,
+ * no bloquea ni hace fallar la remocion en si (esa ya quedo aplicada en la
+ * base de datos antes de llamar esto).
+ */
+async function broadcastMemberRemoved(spaceId: string, removedUserId: string): Promise<void> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const channel = supabase.channel(`transactions-${spaceId}`);
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            channel
+              .send({ type: 'broadcast', event: 'member_removed', payload: { userId: removedUserId } })
+              .finally(resolve);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            resolve();
+          }
+        });
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 2500)),
+    ]);
+    await supabase.removeChannel(channel);
+  } catch (err) {
+    console.error('No se pudo transmitir el aviso de remocion en vivo (no crítico):', err);
+  }
+}
+
+/**
  * Remueve a un colaborador del espacio. RLS (space_members_delete_admin_or_self)
  * ya permite esto a owner/admin (o a la propia persona saliendo), pero aqui
  * ademas se protege explicitamente al owner original -- removerlo dejaria el
@@ -166,6 +233,8 @@ export async function removeMember(
   if (!count) {
     return { success: false, error: 'No tienes permiso para remover a esa persona.' };
   }
+
+  await broadcastMemberRemoved(spaceId, userId);
 
   return { success: true };
 }

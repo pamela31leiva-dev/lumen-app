@@ -12,6 +12,7 @@ import { ImpactSummaryModal } from '@/components/dashboard/ImpactSummaryModal';
 import { IdentitySnapshotCard } from '@/components/dashboard/IdentitySnapshotCard';
 import { ExportModal } from '@/components/dashboard/ExportModal';
 import { AccountDeletionSection } from '@/components/dashboard/AccountDeletionSection';
+import { AlertPreferencesForm } from '@/components/dashboard/AlertPreferencesForm';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -76,6 +77,14 @@ export default async function SettingsPage() {
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-1 text-sm font-medium text-stone-200">Preferencias de Alertas</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Sin envio de correo o push todavia -- esto ajusta los avisos dentro de la app.
+          </p>
+          <AlertPreferencesForm spaceId={activeSpace.id} currentBillReminderDays={activeSpace.billReminderDays} canEdit={canEditSpace} />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Cuentas</h2>
           <BalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
         </section>
@@ -102,7 +111,7 @@ export default async function SettingsPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-medium text-stone-200">Exportar reportes</h2>
-              <p className="mt-1 text-xs text-stone-500">Excel de grado profesional para tu contador o revision propia.</p>
+              <p className="mt-1 text-xs text-stone-500">Excel de grado profesional, o CSV/JSON con tus datos crudos -- portabilidad total.</p>
             </div>
             {exportRequiresPro ? (
               <span className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-stone-500">

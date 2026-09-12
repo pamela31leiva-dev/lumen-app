@@ -25,6 +25,7 @@ interface SpaceMembershipRow {
     type: SpaceType;
     base_currency: string;
     is_pro: boolean;
+    bill_reminder_days: number;
   } | null;
 }
 
@@ -38,7 +39,7 @@ export async function getUserSpaces(): Promise<SpaceSummary[]> {
 
   const { data, error } = await supabase
     .from('space_members')
-    .select('role, space:spaces(id, name, type, base_currency, is_pro)')
+    .select('role, space:spaces(id, name, type, base_currency, is_pro, bill_reminder_days)')
     .eq('user_id', user.id)
     .returns<SpaceMembershipRow[]>();
 
@@ -56,6 +57,7 @@ export async function getUserSpaces(): Promise<SpaceSummary[]> {
       baseCurrency: row.space.base_currency,
       role: row.role,
       isPro: row.space.is_pro,
+      billReminderDays: row.space.bill_reminder_days,
     }));
 }
 

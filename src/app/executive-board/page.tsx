@@ -138,6 +138,7 @@ export default async function ExecutiveBoardPage() {
           accounts={balances.accounts}
           categories={categories}
           bills={bills}
+          billReminderDays={activeSpace.billReminderDays}
         />
 
         {/* Cero Ruido: detalle por cuenta colapsado — es consulta, no decision */}

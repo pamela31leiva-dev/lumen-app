@@ -105,7 +105,10 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
           <li key={member.userId} className="animate-fade-scale-in flex items-center justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="truncate text-sm text-stone-100">{member.fullName ?? member.email}</p>
-              {member.fullName && <p className="truncate text-xs text-stone-500">{member.email}</p>}
+              <p className="truncate text-xs text-stone-500">
+                {member.fullName && <span>{member.email} · </span>}
+                Desde {new Date(member.joinedAt).toLocaleDateString('es-CO')}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="rounded-full bg-emerald-600/15 px-2.5 py-1 text-[11px] font-medium text-emerald-400">

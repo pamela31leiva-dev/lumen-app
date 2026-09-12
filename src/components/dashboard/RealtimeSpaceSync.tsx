@@ -27,6 +27,11 @@ function displayName(members: SpaceMemberSummary[], userId: string): string {
   return member.fullName ?? member.email;
 }
 
+/** Misma navegacion "dura" que AccountDeletionSection -- una pestaña con sesion ya invalida no debe depender de una transicion de cliente de Next.js. */
+function hardNavigate(path: string) {
+  window.location.assign(path);
+}
+
 /**
  * Espacios colaborativos, verdad compartida: escucha cambios en vivo (via
  * Supabase Realtime, ya incluido en el plan $0 -- ver migracion 0015) sobre
@@ -39,6 +44,7 @@ function displayName(members: SpaceMemberSummary[], userId: string): string {
 export function RealtimeSpaceSync({ spaceId, currentUserId, members }: RealtimeSpaceSyncProps) {
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
+  const [revoked, setRevoked] = useState(false);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -71,6 +77,15 @@ export function RealtimeSpaceSync({ spaceId, currentUserId, members }: RealtimeS
           router.refresh();
         },
       )
+      // Revocacion de acceso en tiempo real: si un owner/admin remueve a
+      // esta persona mientras tiene el tablero abierto, no espera a que
+      // intente algo y choque con RLS -- se le avisa y se le saca de
+      // inmediato (ver broadcastMemberRemoved en actions/settings.ts).
+      .on('broadcast', { event: 'member_removed' }, (payload) => {
+        if (payload.payload?.userId === currentUserId) {
+          setRevoked(true);
+        }
+      })
       .subscribe();
 
     return () => {
@@ -79,10 +94,27 @@ export function RealtimeSpaceSync({ spaceId, currentUserId, members }: RealtimeS
   }, [spaceId, currentUserId, members, router]);
 
   useEffect(() => {
+    if (!revoked) return;
+    const timer = setTimeout(() => hardNavigate('/executive-board'), 2500);
+    return () => clearTimeout(timer);
+  }, [revoked]);
+
+  useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 5000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  if (revoked) {
+    return (
+      <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-elevated p-6 text-center text-stone-100 shadow-2xl">
+          <p className="text-sm">Tu acceso a este espacio fue revocado.</p>
+          <p className="mt-1 text-xs text-stone-500">Te llevamos a tus espacios...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!notice) return null;
 

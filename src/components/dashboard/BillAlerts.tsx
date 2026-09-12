@@ -8,6 +8,8 @@ import { cn, formatMoney } from '@/lib/utils';
 interface BillAlertsProps {
   spaceId: string;
   bills: BillSummary[];
+  /** Dias de anticipacion configurados en Ajustes > Preferencias de Alertas (default 3). */
+  reminderDays: number;
 }
 
 function dueDateLabel(daysUntilDue: number): string {
@@ -24,7 +26,7 @@ function dueDateLabel(daysUntilDue: number): string {
  * (riesgo de corte de servicio), no un juicio sobre un gasto pasado. Ambar
  * para lo que vence en <=3 dias, siguiendo el mismo lenguaje del resto.
  */
-export function BillAlerts({ spaceId, bills }: BillAlertsProps) {
+export function BillAlerts({ spaceId, bills, reminderDays }: BillAlertsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function BillAlerts({ spaceId, bills }: BillAlertsProps) {
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const urgentBills = bills.filter((b) => b.daysUntilDue <= 3);
+  const urgentBills = bills.filter((b) => b.daysUntilDue <= reminderDays);
 
   function handlePay(billId: string) {
     setError(null);

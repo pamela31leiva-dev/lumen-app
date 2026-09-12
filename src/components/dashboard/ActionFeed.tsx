@@ -15,6 +15,8 @@ interface ActionFeedProps {
   accounts: AccountBalance[];
   categories: CategoryOption[];
   bills: BillSummary[];
+  /** Dias de anticipacion configurados en Ajustes > Preferencias de Alertas (default 3). */
+  billReminderDays: number;
 }
 
 /**
@@ -33,10 +35,11 @@ export function ActionFeed({
   accounts,
   categories,
   bills,
+  billReminderDays,
 }: ActionFeedProps) {
   const hasPending = pendingTransactions.length > 0;
   const hasOverdueObligation = recurringObligations.some((o) => o.isOverdue);
-  const hasUrgentBill = bills.some((b) => b.daysUntilDue <= 3);
+  const hasUrgentBill = bills.some((b) => b.daysUntilDue <= billReminderDays);
 
   return (
     <section>
@@ -47,7 +50,7 @@ export function ActionFeed({
       <DailyCheckInBubble spaceId={spaceId} hasActivityToday={hasActivityToday} />
 
       <div className="flex flex-col gap-4">
-        <BillAlerts spaceId={spaceId} bills={bills} />
+        <BillAlerts spaceId={spaceId} bills={bills} reminderDays={billReminderDays} />
 
         <ProactiveAssistantBanner spaceId={spaceId} baseCurrency={baseCurrency} recurringObligations={recurringObligations} />
 

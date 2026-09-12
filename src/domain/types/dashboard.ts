@@ -14,6 +14,8 @@ export interface SpaceSummary {
   role: MemberRole;
   /** Solo relevante para espacios type='business': desbloquea analitica de negocio avanzada (Picos de Venta, proyeccion, exportacion). Activacion manual, sin pasarela de pago todavia. */
   isPro: boolean;
+  /** Dias de anticipacion para marcar una factura como "por vencer" (BillAlerts, ActionFeed). Configurable por espacio, default 3. */
+  billReminderDays: number;
 }
 
 /** Fila de la vista determinista `account_balances` (nunca calculada por IA). */
