@@ -23,6 +23,33 @@ function sourceForMimeType(mimeType: string): AiCaptureSource {
   return mimeType.startsWith('image/') ? 'ai_photo' : 'ai_document';
 }
 
+/**
+ * Optimizacion de Interfaz en Confirmacion: antes, la tarjeta con los
+ * valores procesados por la IA aparecia mas abajo en la bandeja de
+ * pendientes (ActionFeed), exigiendo desplazamiento manual para verla justo
+ * despues de "Registrar". Esto la trae a la vista de inmediato, justo
+ * debajo de la consola (que es sticky arriba) -- lectura en 3 segundos, sin
+ * scroll. router.refresh() es asincrono, asi que se reintenta unos
+ * instantes hasta que el nodo con el nuevo id exista en el DOM.
+ */
+function scrollToPendingTransaction(transactionId: string) {
+  const start = Date.now();
+  const MAX_WAIT_MS = 3000;
+
+  function attempt() {
+    const el = document.getElementById(`pending-${transactionId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (Date.now() - start < MAX_WAIT_MS) {
+      requestAnimationFrame(attempt);
+    }
+  }
+
+  requestAnimationFrame(attempt);
+}
+
 // Umbral bajo el cual una imagen ya es lo bastante liviana como para no
 // valer la pena recomprimir (fotos de pantalla, capturas ya optimizadas).
 const COMPRESS_THRESHOLD_BYTES = 600 * 1024;
@@ -175,6 +202,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         message: result.needsReview ? 'Registrado. Vale la pena confirmar un par de detalles.' : 'Registrado. Tu mapa sigue intacto.',
       });
       router.refresh();
+      scrollToPendingTransaction(result.transactionId);
     });
   }
 
@@ -249,6 +277,7 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
         message: result.needsReview ? 'Documento registrado. Vale la pena confirmar un par de detalles.' : 'Documento registrado. Tu mapa sigue intacto.',
       });
       router.refresh();
+      scrollToPendingTransaction(result.transactionId);
     });
   }
 

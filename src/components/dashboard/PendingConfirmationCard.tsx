@@ -251,6 +251,7 @@ export function PendingConfirmationCard({
     const isNeutral = optimisticOutcome.kind === 'reject';
     return (
       <div
+        id={`pending-${transaction.id}`}
         className={cn(
           'animate-fade-scale-in flex items-center gap-3 rounded-xl border p-5 transition-all duration-300',
           isNeutral ? 'border-white/10 bg-elevated' : 'border-growth/25 bg-growth/5',
@@ -272,7 +273,10 @@ export function PendingConfirmationCard({
   }
 
   return (
-    <div className="animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-all duration-300 hover:border-gold/15">
+    <div
+      id={`pending-${transaction.id}`}
+      className="animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-all duration-300 hover:border-gold/15"
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
