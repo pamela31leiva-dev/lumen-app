@@ -70,15 +70,45 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       otherSpaceNames: otherSpaces.map((s) => s.name),
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     await reportError({
       source: 'ai-extraction',
-      message: err instanceof Error ? err.message : String(err),
+      message,
       stack: err instanceof Error ? err.stack : undefined,
       context: { spaceId: payload.space_id, captureSource: payload.capture_source },
     });
+
+    // Ni el proveedor externo ni el motor local pudieron interpretar esto
+    // (Gemini caido/lento + el texto no calzo con ningun patron conocido, o
+    // era una foto/documento sin texto). La entrada JAMAS se descarta: se
+    // guarda como receipt con processing_error, visible y recuperable desde
+    // el Centro de Ingesta (reintentar o completar a mano) en vez de
+    // perderse en un mensaje de error que no deja rastro.
+    const { data: failedReceipt, error: failedReceiptError } = await supabase
+      .from('receipts')
+      .insert({
+        space_id: payload.space_id,
+        uploaded_by: user.id,
+        capture_source: payload.capture_source,
+        storage_path: payload.storage_path ?? null,
+        mime_type: payload.mime_type ?? null,
+        original_filename: payload.original_filename ?? null,
+        raw_transcript: payload.raw_text ?? null,
+        status: 'pending_confirmation',
+        processing_error: message,
+      })
+      .select('id')
+      .single();
+
+    if (failedReceiptError) {
+      console.error('Error al guardar la entrada fallida para revision posterior:', failedReceiptError);
+    }
+
     return {
       success: false,
-      error: 'No se pudo interpretar la informacion. Intenta de nuevo o registra el movimiento manualmente.',
+      error:
+        'No pudimos interpretar completamente esta captura en este momento. Tu informacion esta guardada. Puedes completar los datos manualmente o intentar procesarla nuevamente desde el Centro de Ingesta.',
+      receiptId: failedReceipt?.id ?? null,
     };
   }
 

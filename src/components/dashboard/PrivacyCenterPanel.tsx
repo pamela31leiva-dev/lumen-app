@@ -1,23 +1,26 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { exportUserData, purgeUserData } from '@/actions/privacy';
+import { exportUserData } from '@/actions/privacy';
+import { AccountDeletionSection } from '@/components/dashboard/AccountDeletionSection';
 import { cn } from '@/lib/utils';
-
-const CONFIRM_PHRASE = 'ELIMINAR';
 
 /**
  * Contenido del Centro de Privacidad (Habeas Data), sin cromo de dialogo.
  * Se usa tanto dentro de PrivacyCenterModal (acceso rapido) como directamente
  * en la pagina /privacy (vista formal de pagina completa).
+ *
+ * El derecho de Supresion se ejerce con el MISMO componente que
+ * /settings > Privacidad y Seguridad (AccountDeletionSection) -- este panel
+ * antes tenia su propio flujo de purga (purgeUserData) que, a diferencia del
+ * estandar actual, promovia en silencio a otro miembro como dueño de un
+ * espacio compartido sin pedirle confirmacion a nadie. Ese flujo se elimino:
+ * ahora, sin excepcion, ser dueño de un espacio compartido bloquea la
+ * eliminacion hasta transferir la propiedad a mano.
  */
 export function PrivacyCenterPanel() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [purgeConfirmText, setPurgeConfirmText] = useState('');
-  const [purgeSummary, setPurgeSummary] = useState<string | null>(null);
 
   function handleExport() {
     setError(null);
@@ -34,25 +37,6 @@ export function PrivacyCenterPanel() {
       link.download = `mis-datos-${new Date().toISOString().slice(0, 10)}.json`;
       link.click();
       URL.revokeObjectURL(url);
-    });
-  }
-
-  function handlePurge() {
-    setError(null);
-    setPurgeSummary(null);
-    startTransition(async () => {
-      const result = await purgeUserData();
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      const deleted = result.steps.filter((s) => s.action === 'space_deleted').length;
-      const left = result.steps.filter((s) => s.action === 'left_space').length;
-      setPurgeSummary(
-        `Listo: ${deleted} espacio(s) eliminado(s) por completo y ${left} espacio(s) compartido(s) abandonado(s). Tu acceso a esos datos quedo revocado.`,
-      );
-      setPurgeConfirmText('');
-      router.refresh();
     });
   }
 
@@ -75,35 +59,18 @@ export function PrivacyCenterPanel() {
           {isPending ? 'Preparando...' : 'Descargar JSON'}
         </button>
       </div>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
 
       <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/20 p-4">
         <p className="text-sm font-medium text-stone-200">Eliminar mis datos</p>
         <p className="mt-1 text-xs text-stone-500">
-          Si eres el unico miembro de un espacio, se elimina por completo (cuentas, categorias, documentos y
-          movimientos). En espacios compartidos, simplemente los abandonas y pierdes acceso de inmediato. Esta accion
-          no se puede deshacer.
+          Borra tu cuenta y los espacios de los que eres unica/o integrante, de forma permanente. Si sigues siendo
+          dueña/o de un espacio compartido, primero debes transferir la propiedad o eliminar a los demas integrantes.
         </p>
-        <label htmlFor="purge-confirm" className="mt-3 block text-xs text-stone-400">
-          Escribe <span className="font-semibold text-red-400">{CONFIRM_PHRASE}</span> para habilitar el boton.
-        </label>
-        <input
-          id="purge-confirm"
-          value={purgeConfirmText}
-          onChange={(e) => setPurgeConfirmText(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-        />
-        <button
-          type="button"
-          onClick={handlePurge}
-          disabled={isPending || purgeConfirmText !== CONFIRM_PHRASE}
-          className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isPending ? 'Eliminando...' : 'Eliminar definitivamente'}
-        </button>
+        <div className="mt-3">
+          <AccountDeletionSection />
+        </div>
       </div>
-
-      {purgeSummary && <p className="mt-3 text-xs text-emerald-400">{purgeSummary}</p>}
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
     </div>
   );
 }

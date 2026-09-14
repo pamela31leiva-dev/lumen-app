@@ -118,7 +118,19 @@ export type ProcessCaptureResult =
       needsReview: boolean;
       uncertainties: string[];
     }
-  | { success: false; error: string; illegible?: boolean };
+  | {
+      success: false;
+      error: string;
+      illegible?: boolean;
+      /**
+       * Cuando la interpretacion fallo por completo (proveedor externo Y
+       * motor local), la entrada original igual se guarda como receipt con
+       * processing_error -- este id permite ubicarla despues en el Centro
+       * de Ingesta para reintentar o completar manualmente. null si el
+       * fallo ocurrio antes de poder guardar nada (ej. sin autorizacion).
+       */
+      receiptId?: string | null;
+    };
 
 /** Payload para que la persona confirme (y corrija) una transaccion pendiente. */
 export interface ConfirmTransactionDTO {

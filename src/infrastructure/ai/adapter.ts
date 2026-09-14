@@ -4,6 +4,7 @@ import { OpenAiExtractionProvider } from '@/infrastructure/ai/providers/openai-p
 import { AnthropicExtractionProvider } from '@/infrastructure/ai/providers/anthropic-provider';
 import { GeminiExtractionProvider } from '@/infrastructure/ai/providers/gemini-provider';
 import { ResilientAiExtractionProvider } from '@/infrastructure/ai/providers/resilient-provider';
+import { LocalRegexExtractionProvider } from '@/infrastructure/ai/providers/local-regex-provider';
 
 /**
  * Punto unico de seleccion de proveedor de IA. El resto de la aplicacion
@@ -28,17 +29,24 @@ export function getAiExtractionAdapter(): AiExtractionPort {
       cachedAdapter = new OpenAiExtractionProvider();
       break;
     case 'gemini':
-      // Modo $0: Google Gemini directo (nivel gratuito de Google AI
-      // Studio), sin depender de un motor de pago.
-      cachedAdapter = new GeminiExtractionProvider();
+      // Modo $0: Google Gemini (nivel gratuito de Google AI Studio) como
+      // motor principal, con el motor local determinista (regex, sin red)
+      // como respaldo automatico -- antes, si Gemini fallaba o se demoraba
+      // (confirmado en produccion: reintentos agotados a los ~30s), la
+      // captura simplemente fallaba sin alternativa. Ahora un patron comun
+      // en español ("Gaste 25.000 en mercado") se resuelve localmente en
+      // milisegundos aunque Gemini este caido.
+      cachedAdapter = new ResilientAiExtractionProvider(new GeminiExtractionProvider(), () => new LocalRegexExtractionProvider());
       break;
     case 'anthropic':
-      // Motor principal (Claude, de pago) + respaldo automatico (Gemini)
-      // si el principal falla. GeminiExtractionProvider solo se
-      // construye (y exige GEMINI_API_KEY) si realmente se necesita.
+      // Cadena de 3 niveles: Claude (principal, de pago) -> Gemini
+      // (respaldo externo) -> motor local determinista (ultimo respaldo,
+      // sin red). Cada nivel solo se construye si el anterior realmente
+      // fallo, asi que Gemini/el motor local nunca se instancian si Claude
+      // ya respondio bien.
       cachedAdapter = new ResilientAiExtractionProvider(
         new AnthropicExtractionProvider(),
-        () => new GeminiExtractionProvider(),
+        () => new ResilientAiExtractionProvider(new GeminiExtractionProvider(), () => new LocalRegexExtractionProvider()),
       );
       break;
     default:

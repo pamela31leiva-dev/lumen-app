@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getUserSpaces } from '@/actions/dashboard';
 import { getExecutiveBoardSnapshot } from '@/actions/snapshot';
+import { getFailedCaptures } from '@/actions/ingestion';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -82,6 +83,12 @@ export default async function ExecutiveBoardPage() {
     anomalies,
   } = await getExecutiveBoardSnapshot(activeSpace.id, businessAnalyticsLocked, activeSpace.isPro);
 
+  // Centro de Ingesta: entradas que ni Gemini ni el motor local pudieron
+  // interpretar (ver adapter.ts + actions/capture.ts). Consulta aparte y
+  // liviana -- se espera que este casi siempre vacia, asi que no vale la
+  // pena cargar el snapshot atomico con esto.
+  const failedCaptures = await getFailedCaptures(activeSpace.id);
+
   return (
     <main className="min-h-screen bg-obsidian text-stone-100">
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="executive-board" />
@@ -154,6 +161,7 @@ export default async function ExecutiveBoardPage() {
           categories={categories}
           bills={bills}
           billReminderDays={activeSpace.billReminderDays}
+          failedCaptures={failedCaptures}
         />
 
         {/* Cero Ruido: detalle por cuenta colapsado — es consulta, no decision */}

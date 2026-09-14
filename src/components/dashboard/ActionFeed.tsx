@@ -2,9 +2,11 @@ import { ProactiveAssistantBanner } from '@/components/dashboard/ProactiveAssist
 import { PendingConfirmationCard } from '@/components/dashboard/PendingConfirmationCard';
 import { DailyCheckInBubble } from '@/components/dashboard/DailyCheckInBubble';
 import { BillAlerts } from '@/components/dashboard/BillAlerts';
+import { FailedCapturesCard } from '@/components/dashboard/FailedCapturesCard';
 import type { AccountBalance, CategoryOption, PendingTransactionSummary } from '@/domain/types/dashboard';
 import type { RecurringObligation } from '@/domain/types/analytics';
 import type { BillSummary } from '@/actions/bills';
+import type { FailedCaptureSummary } from '@/actions/ingestion';
 
 interface ActionFeedProps {
   spaceId: string;
@@ -17,6 +19,8 @@ interface ActionFeedProps {
   bills: BillSummary[];
   /** Dias de anticipacion configurados en Ajustes > Preferencias de Alertas (default 3). */
   billReminderDays: number;
+  /** Centro de Ingesta: capturas que ni Gemini ni el motor local pudieron interpretar. */
+  failedCaptures: FailedCaptureSummary[];
 }
 
 /**
@@ -36,6 +40,7 @@ export function ActionFeed({
   categories,
   bills,
   billReminderDays,
+  failedCaptures,
 }: ActionFeedProps) {
   const hasPending = pendingTransactions.length > 0;
   const hasOverdueObligation = recurringObligations.some((o) => o.isOverdue);
@@ -50,6 +55,8 @@ export function ActionFeed({
       <DailyCheckInBubble spaceId={spaceId} hasActivityToday={hasActivityToday} />
 
       <div className="flex flex-col gap-4">
+        <FailedCapturesCard spaceId={spaceId} captures={failedCaptures} />
+
         <BillAlerts spaceId={spaceId} bills={bills} reminderDays={billReminderDays} />
 
         <ProactiveAssistantBanner spaceId={spaceId} baseCurrency={baseCurrency} recurringObligations={recurringObligations} />
@@ -65,7 +72,7 @@ export function ActionFeed({
           />
         ))}
 
-        {!hasPending && !hasOverdueObligation && !hasUrgentBill && (
+        {!hasPending && !hasOverdueObligation && !hasUrgentBill && failedCaptures.length === 0 && (
           <div className="rounded-xl border border-white/10 bg-elevated p-5 text-sm text-stone-500 transition-colors hover:border-gold/15">
             Todo esta al dia. No hay nada pendiente por revisar en este espacio.
           </div>
