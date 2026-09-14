@@ -18,6 +18,8 @@ import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { RealtimeSpaceSync } from '@/components/dashboard/RealtimeSpaceSync';
 import { HistoricalPanoramaCard } from '@/components/dashboard/HistoricalPanoramaCard';
 import { RecurringIncomesCard } from '@/components/dashboard/RecurringIncomesCard';
+import { RadiografiaCard } from '@/components/dashboard/RadiografiaCard';
+import { AnomalyAuditCard } from '@/components/dashboard/AnomalyAuditCard';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -75,7 +77,10 @@ export default async function ExecutiveBoardPage() {
     businessCashInsight,
     cashFlowProjection,
     recurringIncomes,
-  } = await getExecutiveBoardSnapshot(activeSpace.id, businessAnalyticsLocked);
+    folderDistribution,
+    weekdayHeat,
+    anomalies,
+  } = await getExecutiveBoardSnapshot(activeSpace.id, businessAnalyticsLocked, activeSpace.isPro);
 
   return (
     <main className="min-h-screen bg-obsidian text-stone-100">
@@ -106,9 +111,19 @@ export default async function ExecutiveBoardPage() {
           activityStreakDays={proactiveInsights.activityStreakDays}
         />
 
+        {/* Radiografia Proporcional: entendimiento en 3 segundos -- barra
+            segmentada por carpeta + mapa de calor semanal, en vez de exigir
+            leer una lista para entender donde se fue la plata. */}
+        <RadiografiaCard folderDistribution={folderDistribution} weekdayHeat={weekdayHeat} baseCurrency={balances.baseCurrency} />
+
         {/* "Concepto y Destino como Protagonistas": nunca solo el numero
             agregado -- justo debajo, los movimientos reales que lo explican. */}
         <RecentActivityCard items={recentActivity} />
+
+        {/* Auditoria de Anomalias -- nivel avanzado (is_pro): gastos muy
+            fuera de lo normal de su propia categoria, calculado siempre en
+            Postgres pero mostrado solo si el espacio tiene acceso avanzado. */}
+        {activeSpace.isPro && <AnomalyAuditCard anomalies={anomalies} baseCurrency={balances.baseCurrency} />}
 
         {/* Inteligencia para Microemprendimientos + Proyeccion de Caja:
             solo existen cuando ya hay suficiente historial -- Cero Ruido

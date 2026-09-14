@@ -115,7 +115,7 @@ export async function getCashFlowProjection(spaceId: string, currentBalance: num
 
   if (error) {
     console.error('Error al leer historial para proyeccion de caja:', error);
-    return { currentBalance, projectedBalance30d: currentBalance, upcomingEvents: [], lowestPoint: null };
+    return { currentBalance, projectedBalance30d: currentBalance, upcomingEvents: [], lowestPoint: null, horizonDays: 30 };
   }
 
   const recurringEvents = detectRecurringCashEvents(

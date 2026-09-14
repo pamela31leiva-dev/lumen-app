@@ -1,4 +1,5 @@
 import type { TransactionType } from '@/domain/types/capture';
+import type { Folder } from '@/domain/folders';
 
 /** Forma minima que el motor de patrones necesita de una transaccion — no acopla el dominio a Supabase. */
 export interface TransactionForAnalytics {
@@ -80,10 +81,38 @@ export interface ProjectedCashEvent extends RecurringCashEvent {
  */
 export interface CashFlowProjection {
   currentBalance: number;
-  /** Saldo proyectado al final de la ventana (dia 30), asumiendo solo los eventos recurrentes detectados. */
+  /** Saldo proyectado al final de la ventana, asumiendo solo los eventos recurrentes detectados. */
   projectedBalance30d: number;
   /** Eventos recurrentes esperados dentro de la ventana, en orden cronologico. */
   upcomingEvents: ProjectedCashEvent[];
   /** El punto mas bajo que tocaria el saldo dentro de la ventana (y su fecha) -- la pregunta real detras de "¿me alcanza?". */
   lowestPoint: { date: string; balance: number } | null;
+  /** Dias de la ventana proyectada -- 30 por defecto, 90 para espacios is_pro (Niveles Avanzados). */
+  horizonDays: number;
+}
+
+/** Un segmento de la Radiografia Proporcional: gasto del mes en curso por carpeta. */
+export interface FolderDistributionSlice {
+  folder: Folder;
+  total: number;
+}
+
+/** Un punto del mapa de calor de gasto por dia de la semana (0=domingo .. 6=sabado), ultimos 90 dias. */
+export interface WeekdayHeatPoint {
+  weekday: number;
+  total: number;
+}
+
+/**
+ * Auditoria de Anomalias (nivel avanzado / is_pro): un gasto confirmado que
+ * supera 2.5x el promedio de su propia categoria en los ultimos 90 dias --
+ * calculado en Postgres (GROUP BY + AVG), nunca inferido por IA.
+ */
+export interface AnomalyFlag {
+  id: string;
+  description: string | null;
+  amountBase: number;
+  categoryName: string;
+  transactionDate: string;
+  categoryAvg: number;
 }

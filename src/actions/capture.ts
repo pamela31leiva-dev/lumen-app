@@ -3,6 +3,8 @@
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { getAiExtractionAdapter } from '@/infrastructure/ai/adapter';
 import { reportError } from '@/lib/telemetry/reporter';
+import { inferFolderFromHistory, inferFolderFromKeywords, type FolderHistoryEntry } from '@/domain/ai/folder-inference';
+import { folderOf, folderToColumns } from '@/domain/folders';
 import type { CreatePendingCaptureDTO, ProcessCaptureResult } from '@/domain/types/capture';
 
 /**
@@ -141,6 +143,35 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
   }
   receiptId = receipt.id;
 
+  // Motor de Inferencia Inteligente por Palabras Clave e Historial: red de
+  // seguridad para cuando la IA no encontro una señal clara y clasifico por
+  // default en Personal, aunque el texto si tenga una pista real ("desayuno
+  // con mi hijo" -- ninguna palabra de negocio/salud, pero "hijo" ya deberia
+  // bastar para Familiar). Nunca pelea con una clasificacion de la IA que ya
+  // sea distinta de Personal -- solo actua quiando la IA se quedo corta.
+  const aiFolder = folderOf({ isBusiness: Boolean(extraction.is_business), lifeDomain: extraction.is_business ? null : extraction.life_domain });
+  let finalFolder = aiFolder;
+
+  if (aiFolder === 'personal') {
+    const descriptionText = payload.raw_text ?? extraction.concept ?? extraction.merchant_name ?? '';
+
+    const { data: historyRows } = await supabase
+      .from('transactions')
+      .select('description, is_business, life_domain')
+      .eq('space_id', payload.space_id)
+      .eq('status', 'confirmed')
+      .order('transaction_date', { ascending: false })
+      .limit(200);
+    const history: FolderHistoryEntry[] = (historyRows ?? []).map((row) => ({
+      description: row.description,
+      folder: folderOf({ isBusiness: row.is_business, lifeDomain: row.life_domain }),
+    }));
+
+    finalFolder = inferFolderFromHistory(descriptionText, history) ?? inferFolderFromKeywords(descriptionText) ?? 'personal';
+  }
+
+  const folderColumns = folderToColumns(finalFolder);
+
   // exchange_rate se deja en 1: la tasa de cambio real es un dato
   // deterministico (tabla de tasas o servicio de FX del backend), nunca algo
   // que el LLM deba inventar. Si currency_original != base_currency, el
@@ -163,8 +194,7 @@ export async function processIncomingCapture(payload: CreatePendingCaptureDTO): 
       transaction_date: extraction.transaction_date ?? new Date().toISOString(),
       created_by: user.id,
       tags: extraction.suggested_tags ?? [],
-      is_business: extraction.is_business ?? false,
-      life_domain: extraction.is_business ? null : extraction.life_domain ?? null,
+      ...folderColumns,
     })
     .select('id')
     .single();

@@ -232,6 +232,7 @@ export function computeCashFlowProjection(
     projectedBalance30d: runningBalance,
     upcomingEvents,
     lowestPoint,
+    horizonDays,
   };
 }
 

@@ -19,19 +19,19 @@ const WEEKDAY_FORMAT = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 
  * por debajo del saldo de hoy.
  */
 export function CashFlowProjectionCard({ projection, baseCurrency }: CashFlowProjectionCardProps) {
-  const { currentBalance, projectedBalance30d, upcomingEvents, lowestPoint } = projection;
+  const { currentBalance, projectedBalance30d, upcomingEvents, lowestPoint, horizonDays } = projection;
   const dipsBelow = lowestPoint !== null && lowestPoint.balance < currentBalance;
 
   return (
     <section className="rounded-xl border border-white/10 bg-elevated p-5 transition-colors hover:border-gold/15">
-      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500">Proyeccion a 30 Dias</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500">Proyeccion a {horizonDays} Dias</p>
 
       <p className="mt-2 text-sm text-stone-200">
         Si nada cambia, tu caja estaria en{' '}
         <span className={cn('amount font-medium', projectedBalance30d < 0 ? 'text-amber-300' : 'text-stone-100')}>
           {formatMoney(projectedBalance30d, baseCurrency)}
         </span>{' '}
-        dentro de 30 dias.
+        dentro de {horizonDays} dias.
       </p>
 
       {lowestPoint && dipsBelow && (

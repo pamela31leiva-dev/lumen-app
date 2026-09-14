@@ -18,7 +18,15 @@ import type {
   SpaceMemberSummary,
   TransactionHistoryItem,
 } from '@/domain/types/dashboard';
-import type { BusinessCashInsight, CashFlowProjection, ProactiveInsights, RecurringCashEvent } from '@/domain/types/analytics';
+import type {
+  AnomalyFlag,
+  BusinessCashInsight,
+  CashFlowProjection,
+  FolderDistributionSlice,
+  ProactiveInsights,
+  RecurringCashEvent,
+  WeekdayHeatPoint,
+} from '@/domain/types/analytics';
 import type { TransactionType } from '@/domain/types/capture';
 import type { YearlySummary } from '@/actions/history';
 import type { BillSummary } from '@/actions/bills';
@@ -133,6 +141,26 @@ interface SnapshotRecurringIncomeRow {
   last_generated_period: string | null;
 }
 
+interface SnapshotFolderDistributionRow {
+  is_business: boolean;
+  life_domain: 'personal' | 'familiar' | 'salud' | null;
+  total: number;
+}
+
+interface SnapshotWeekdayHeatRow {
+  weekday: number;
+  total: number;
+}
+
+interface SnapshotAnomalyRow {
+  id: string;
+  description: string | null;
+  amount_base: number;
+  category_name: string;
+  transaction_date: string;
+  category_avg: number;
+}
+
 interface ExecutiveBoardSnapshotJson {
   space: { base_currency: string } | null;
   accounts: SnapshotAccountRow[];
@@ -147,6 +175,9 @@ interface ExecutiveBoardSnapshotJson {
   pattern_rows: SnapshotPatternRow[];
   business_rows: SnapshotBusinessRow[];
   recurring_incomes: SnapshotRecurringIncomeRow[];
+  folder_distribution: SnapshotFolderDistributionRow[];
+  weekday_heat: SnapshotWeekdayHeatRow[];
+  anomalies: SnapshotAnomalyRow[];
 }
 
 function normalizeDescriptionKey(raw: string): string {
@@ -174,6 +205,9 @@ export interface ExecutiveBoardSnapshot {
   businessCashInsight: BusinessCashInsight | null;
   cashFlowProjection: CashFlowProjection;
   recurringIncomes: RecurringIncomeSummary[];
+  folderDistribution: FolderDistributionSlice[];
+  weekdayHeat: WeekdayHeatPoint[];
+  anomalies: AnomalyFlag[];
 }
 
 function billDaysUntilDue(dueDate: string): number {
@@ -199,6 +233,7 @@ function billDaysUntilDue(dueDate: string): number {
 export async function getExecutiveBoardSnapshot(
   spaceId: string,
   businessAnalyticsLocked: boolean,
+  isPro: boolean = false,
 ): Promise<ExecutiveBoardSnapshot> {
   const supabase = await getSupabaseServerClient();
 
@@ -230,8 +265,11 @@ export async function getExecutiveBoardSnapshot(
       yearlyOverview: [],
       proactiveInsights: { recurringObligations: [], hasActivityToday: false, activityStreakDays: 0 },
       businessCashInsight: null,
-      cashFlowProjection: { currentBalance: 0, projectedBalance30d: 0, upcomingEvents: [], lowestPoint: null },
+      cashFlowProjection: { currentBalance: 0, projectedBalance30d: 0, upcomingEvents: [], lowestPoint: null, horizonDays: 30 },
       recurringIncomes: [],
+      folderDistribution: [],
+      weekdayHeat: [],
+      anomalies: [],
     };
   }
 
@@ -352,11 +390,16 @@ export async function getExecutiveBoardSnapshot(
   };
 
   let businessCashInsight: BusinessCashInsight | null = null;
+  // Proyeccion a Largo Plazo (Niveles Avanzados): 90 dias para espacios
+  // is_pro en vez de los 30 dias estandar -- misma matematica determinista,
+  // solo una ventana mas amplia.
+  const projectionHorizonDays = isPro ? 90 : 30;
   let cashFlowProjection: CashFlowProjection = {
     currentBalance: totalBalance,
     projectedBalance30d: totalBalance,
     upcomingEvents: [],
     lowestPoint: null,
+    horizonDays: projectionHorizonDays,
   };
 
   if (!businessAnalyticsLocked) {
@@ -391,8 +434,27 @@ export async function getExecutiveBoardSnapshot(
       (e) => !fixedDescriptionKeys.has(normalizeDescriptionKey(e.description)),
     );
 
-    cashFlowProjection = computeCashFlowProjection(totalBalance, [...fixedIncomeEvents, ...detectedEvents]);
+    cashFlowProjection = computeCashFlowProjection(totalBalance, [...fixedIncomeEvents, ...detectedEvents], new Date(), projectionHorizonDays);
   }
+
+  const folderDistribution: FolderDistributionSlice[] = (data.folder_distribution ?? []).map((row) => ({
+    folder: folderOf({ isBusiness: row.is_business, lifeDomain: row.life_domain }),
+    total: Number(row.total),
+  }));
+
+  const weekdayHeat: WeekdayHeatPoint[] = (data.weekday_heat ?? []).map((row) => ({
+    weekday: row.weekday,
+    total: Number(row.total),
+  }));
+
+  const anomalies: AnomalyFlag[] = (data.anomalies ?? []).map((row) => ({
+    id: row.id,
+    description: row.description,
+    amountBase: Number(row.amount_base),
+    categoryName: row.category_name,
+    transactionDate: row.transaction_date,
+    categoryAvg: Number(row.category_avg),
+  }));
 
   return {
     baseCurrency,
@@ -409,5 +471,8 @@ export async function getExecutiveBoardSnapshot(
     businessCashInsight,
     cashFlowProjection,
     recurringIncomes,
+    folderDistribution,
+    weekdayHeat,
+    anomalies,
   };
 }
