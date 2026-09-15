@@ -117,3 +117,37 @@ export interface AnomalyFlag {
   transactionDate: string;
   categoryAvg: number;
 }
+
+/**
+ * Un punto de la Historia Financiera (Bloque P3): saldo acumulado a fin de
+ * ese mes (activos/pasivos/patrimonio neto) + ingreso/gasto ocurrido DURANTE
+ * ese mes. Todo calculado en Postgres (get_financial_history, 0028) sobre el
+ * ledger de transacciones confirmadas -- nunca un snapshot periodico que
+ * podria desincronizarse.
+ */
+export interface FinancialHistoryPoint {
+  /** Primer dia del mes (o del trimestre, tras resamplear), ISO 8601 (solo fecha). */
+  periodStart: string;
+  /** Suma de cuentas que no son tarjeta de credito, a fin de este periodo. */
+  assets: number;
+  /** Deuda de tarjeta de credito (magnitud positiva), a fin de este periodo. */
+  liabilities: number;
+  netWorth: number;
+  income: number;
+  expense: number;
+}
+
+/**
+ * KPIs financieros derivados (Bloque P3) -- Postgres ya sumo los numeros
+ * crudos en FinancialHistoryPoint; esto solo calcula la razon/porcentaje,
+ * igual que computeBusinessCashInsight. null cuando el KPI no tiene sentido
+ * todavia (ej. tasa de ahorro sin ingresos ese mes).
+ */
+export interface FinancialKpis {
+  /** (ingreso - gasto) / ingreso del mes mas reciente, en %. null si no hubo ingreso ese mes. */
+  savingsRatePercent: number | null;
+  /** Activos liquidos / gasto mensual promedio (ultimos 3 meses con gasto) -- "meses de colchon". null sin gasto historico. */
+  liquidityMonths: number | null;
+  /** Pasivos / activos del mes mas reciente, en %. 0 si no hay deuda; null si tampoco hay activos contra que medirla. */
+  debtRatioPercent: number | null;
+}

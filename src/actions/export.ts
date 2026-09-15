@@ -68,16 +68,17 @@ export async function getExportDataset(
     return { error: 'No autorizado' };
   }
 
-  const { data: space, error: spaceError } = await supabase
-    .from('spaces')
-    .select('name, base_currency')
-    .eq('id', spaceId)
-    .single();
-  if (spaceError || !space) {
-    return { error: 'No tienes acceso a este espacio' };
-  }
-
-  const [{ data, error }, { data: accountRows, error: accountsError }, { data: billRows, error: billsError }] = await Promise.all([
+  // Las 5 consultas son independientes entre si -- un solo round-trip
+  // paralelo en vez de "espacio" primero, luego 3 mas, luego el saldo
+  // inicial al final (asi estaba antes: 3 vueltas secuenciales).
+  const [
+    { data: space, error: spaceError },
+    { data, error },
+    { data: accountRows, error: accountsError },
+    { data: billRows, error: billsError },
+    { data: openingBalances },
+  ] = await Promise.all([
+    supabase.from('spaces').select('name, base_currency').eq('id', spaceId).single(),
     supabase
       .from('transactions')
       .select(
@@ -108,8 +109,12 @@ export async function getExportDataset(
       .select('description, amount, currency, due_date, status')
       .eq('space_id', spaceId)
       .order('due_date', { ascending: true }),
+    supabase.from('accounts').select('name, opening_balance').eq('space_id', spaceId),
   ]);
 
+  if (spaceError || !space) {
+    return { error: 'No tienes acceso a este espacio' };
+  }
   if (error) {
     console.error('Error al leer datos para exportacion:', error);
     return { error: 'No se pudo generar el reporte.' };
@@ -117,7 +122,6 @@ export async function getExportDataset(
   if (accountsError) console.error('Error al leer cuentas para exportacion:', accountsError);
   if (billsError) console.error('Error al leer facturas para exportacion:', billsError);
 
-  const { data: openingBalances } = await supabase.from('accounts').select('name, opening_balance').eq('space_id', spaceId);
   const openingByName = new Map((openingBalances ?? []).map((a) => [a.name, Number(a.opening_balance)]));
 
   return {

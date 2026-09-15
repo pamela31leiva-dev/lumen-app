@@ -46,21 +46,37 @@ export async function getAccountDeletionPreview(): Promise<AccountDeletionPrevie
     return { error: 'No se pudo verificar tus espacios. Intenta de nuevo.' };
   }
 
+  const ownedMemberships = (memberships ?? []).filter(
+    (m): m is MembershipRow & { space: { id: string; name: string } } => m.role === 'owner' && m.space !== null,
+  );
+
   const blockers: AccountDeletionBlocker[] = [];
   let soloOwnedSpaceCount = 0;
 
-  for (const membership of memberships ?? []) {
-    if (membership.role !== 'owner' || !membership.space) continue;
-
-    const { count } = await supabase
+  // Un solo round-trip para contar miembros de TODOS los espacios propios a
+  // la vez (antes: una consulta por espacio, dentro de un for) -- para
+  // alguien dueño de N espacios esto era N round-trips secuenciales.
+  if (ownedMemberships.length > 0) {
+    const { data: memberRows } = await supabase
       .from('space_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('space_id', membership.space_id);
+      .select('space_id')
+      .in(
+        'space_id',
+        ownedMemberships.map((m) => m.space_id),
+      );
 
-    if ((count ?? 0) > 1) {
-      blockers.push({ spaceId: membership.space.id, spaceName: membership.space.name, memberCount: count ?? 0 });
-    } else {
-      soloOwnedSpaceCount += 1;
+    const countBySpaceId = new Map<string, number>();
+    for (const row of memberRows ?? []) {
+      countBySpaceId.set(row.space_id, (countBySpaceId.get(row.space_id) ?? 0) + 1);
+    }
+
+    for (const membership of ownedMemberships) {
+      const count = countBySpaceId.get(membership.space_id) ?? 0;
+      if (count > 1) {
+        blockers.push({ spaceId: membership.space.id, spaceName: membership.space.name, memberCount: count });
+      } else {
+        soloOwnedSpaceCount += 1;
+      }
     }
   }
 
@@ -113,23 +129,27 @@ export async function deleteMyAccount(confirmationText: string): Promise<{ succe
     return { success: false, error: 'No se pudo completar la eliminacion. Intenta de nuevo.' };
   }
 
-  for (const membership of memberships ?? []) {
+  const ownedSpaceIds = (memberships ?? []).map((m) => m.space_id);
+
+  if (ownedSpaceIds.length > 0) {
     // Re-verifica justo antes de borrar (nadie se unio en el intervalo entre
-    // el preview y este momento) -- ventana corta, pero mejor cerrarla.
-    const { count } = await supabase
-      .from('space_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('space_id', membership.space_id);
-    if ((count ?? 0) > 1) {
+    // el preview y este momento) -- un solo round-trip para TODOS los
+    // espacios propios en vez de uno por espacio dentro de un for.
+    const { data: memberRows } = await supabase.from('space_members').select('space_id').in('space_id', ownedSpaceIds);
+    const countBySpaceId = new Map<string, number>();
+    for (const row of memberRows ?? []) {
+      countBySpaceId.set(row.space_id, (countBySpaceId.get(row.space_id) ?? 0) + 1);
+    }
+    if (ownedSpaceIds.some((id) => (countBySpaceId.get(id) ?? 0) > 1)) {
       return {
         success: false,
         error: 'Alguien se unio a uno de tus espacios justo ahora. Vuelve a intentarlo.',
       };
     }
 
-    const { error: deleteSpaceError } = await supabase.from('spaces').delete().eq('id', membership.space_id);
-    if (deleteSpaceError) {
-      console.error('Error al eliminar un espacio propio antes de borrar la cuenta:', deleteSpaceError);
+    const { error: deleteSpacesError } = await supabase.from('spaces').delete().in('id', ownedSpaceIds);
+    if (deleteSpacesError) {
+      console.error('Error al eliminar tus espacios propios antes de borrar la cuenta:', deleteSpacesError);
       return { success: false, error: 'No se pudo eliminar uno de tus espacios. Intenta de nuevo.' };
     }
   }

@@ -24,31 +24,29 @@ export async function processCaptureWithClient(
   userId: string,
   payload: CreatePendingCaptureDTO,
 ): Promise<ProcessCaptureResult> {
-  const { data: space, error: spaceError } = await supabase
-    .from('spaces')
-    .select('name, base_currency')
-    .eq('id', payload.space_id)
-    .single();
+  // Las tres consultas son independientes entre si (ninguna necesita el
+  // resultado de otra) -- se piden en paralelo en vez de en cadena, ya que
+  // esto corre en TODA captura (texto/voz/foto/documento/webhook), es la
+  // ruta mas caliente de la app.
+  const [{ data: space, error: spaceError }, { data: hintRows }, { data: otherSpaceRows }] = await Promise.all([
+    supabase.from('spaces').select('name, base_currency').eq('id', payload.space_id).single(),
+    supabase.from('classification_hints').select('question, answer').eq('space_id', payload.space_id).order('created_at', { ascending: false }).limit(20),
+    supabase
+      .from('space_members')
+      .select('space:spaces(id, name)')
+      .eq('user_id', userId)
+      .returns<{ space: { id: string; name: string } | null }[]>(),
+  ]);
+
   if (spaceError || !space) {
     return { success: false, error: 'No tienes acceso a este espacio' };
   }
 
-  const { data: hintRows } = await supabase
-    .from('classification_hints')
-    .select('question, answer')
-    .eq('space_id', payload.space_id)
-    .order('created_at', { ascending: false })
-    .limit(20);
   const learnedHints = (hintRows ?? []).map((h) => `${h.question} -> ${h.answer}`);
 
   // Otros espacios del usuario, para que la IA pueda detectar si el texto
   // pertenece claramente a uno de ellos en vez de al activo (evita friccion
   // de tener que cambiar de espacio manualmente antes de capturar).
-  const { data: otherSpaceRows } = await supabase
-    .from('space_members')
-    .select('space:spaces(id, name)')
-    .eq('user_id', userId)
-    .returns<{ space: { id: string; name: string } | null }[]>();
   const otherSpaces = (otherSpaceRows ?? [])
     .map((r) => r.space)
     .filter((s): s is { id: string; name: string } => s !== null && s.id !== payload.space_id);

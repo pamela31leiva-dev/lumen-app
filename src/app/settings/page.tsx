@@ -2,6 +2,7 @@ import { getAccountBalances, getCategories, getIdentitySnapshot, getMySubscripti
 import { getSpaceMembers } from '@/actions/settings';
 import { getMerchantRules } from '@/actions/merchant-rules';
 import { listInboundChannels } from '@/actions/inbound-channels';
+import { getBudgets } from '@/actions/budgets';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
 import { RenameSpaceForm } from '@/components/dashboard/RenameSpaceForm';
@@ -17,6 +18,7 @@ import { AccountDeletionSection } from '@/components/dashboard/AccountDeletionSe
 import { AlertPreferencesForm } from '@/components/dashboard/AlertPreferencesForm';
 import { MerchantRulesManager } from '@/components/dashboard/MerchantRulesManager';
 import { InboundChannelsManager } from '@/components/dashboard/InboundChannelsManager';
+import { BudgetsManager } from '@/components/dashboard/BudgetsManager';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -31,7 +33,7 @@ const PLAN_LABEL: Record<PlanTier, string> = {
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances, transactionHistory, subscription, categories, identitySnapshot, merchantRules, inboundChannels] = await Promise.all([
+  const [members, balances, transactionHistory, subscription, categories, identitySnapshot, merchantRules, inboundChannels, budgets] = await Promise.all([
     getSpaceMembers(activeSpace.id),
     getAccountBalances(activeSpace.id),
     getTransactionHistory(activeSpace.id),
@@ -40,6 +42,7 @@ export default async function SettingsPage() {
     getIdentitySnapshot(activeSpace.id),
     getMerchantRules(activeSpace.id),
     listInboundChannels(activeSpace.id),
+    getBudgets(activeSpace.id),
   ]);
 
   const canEditSpace = activeSpace.role === 'owner' || activeSpace.role === 'admin';
@@ -107,6 +110,14 @@ export default async function SettingsPage() {
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Bandeja Automatica</h2>
           <InboundChannelsManager spaceId={activeSpace.id} channels={inboundChannels} canManage={canEditSpace} />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-1 text-sm font-medium text-stone-200">Presupuestos</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Un monto mensual por categoria de gasto -- el Reporte Mensual del Panorama lo compara contra lo que realmente gastaste.
+          </p>
+          <BudgetsManager spaceId={activeSpace.id} budgets={budgets} categories={categories} baseCurrency={balances.baseCurrency} canManage={canEditSpace} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">

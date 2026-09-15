@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getUserSpaces } from '@/actions/dashboard';
 import { getExecutiveBoardSnapshot } from '@/actions/snapshot';
 import { getFailedCaptures } from '@/actions/ingestion';
+import { getFinancialHistory } from '@/actions/analytics-history';
+import { computeFinancialKpis, resampleQuarterly } from '@/domain/analytics/kpis';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -21,6 +23,9 @@ import { HistoricalPanoramaCard } from '@/components/dashboard/HistoricalPanoram
 import { RecurringIncomesCard } from '@/components/dashboard/RecurringIncomesCard';
 import { RadiografiaCard } from '@/components/dashboard/RadiografiaCard';
 import { AnomalyAuditCard } from '@/components/dashboard/AnomalyAuditCard';
+import { FinancialKpisCard } from '@/components/dashboard/FinancialKpisCard';
+import { FinancialHistoryCard } from '@/components/dashboard/FinancialHistoryCard';
+import { MonthlyReportModal } from '@/components/dashboard/MonthlyReportModal';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -87,7 +92,16 @@ export default async function ExecutiveBoardPage() {
   // interpretar (ver adapter.ts + actions/capture.ts). Consulta aparte y
   // liviana -- se espera que este casi siempre vacia, asi que no vale la
   // pena cargar el snapshot atomico con esto.
-  const failedCaptures = await getFailedCaptures(activeSpace.id);
+  //
+  // Historia Financiera (0028): tampoco vive en el snapshot atomico -- cambia
+  // con frecuencia distinta (mes a mes, no en cada captura) y no todas las
+  // pantallas la necesitan. Se piden ambas en paralelo.
+  const [failedCaptures, financialHistory] = await Promise.all([
+    getFailedCaptures(activeSpace.id),
+    getFinancialHistory(activeSpace.id),
+  ]);
+  const financialKpis = computeFinancialKpis(financialHistory);
+  const financialHistoryQuarterly = resampleQuarterly(financialHistory);
 
   return (
     <main className="min-h-screen bg-obsidian text-stone-100">
@@ -117,6 +131,21 @@ export default async function ExecutiveBoardPage() {
           monthlyNetFlow={monthlyNetFlow}
           activityStreakDays={proactiveInsights.activityStreakDays}
         />
+
+        {/* KPIs Financieros + Reporte Mensual (Bloque P3): solo tiene sentido
+            leer tasa de ahorro/liquidez/endeudamiento cuando ya hay
+            "Patrimonio Neto" real (mismo criterio que NetWorthHero) -- antes
+            de eso todo saldria en cero o negativo por falta de dato inicial,
+            no por una senal financiera real. */}
+        {balances.hasRealAssets && (
+          <>
+            <FinancialKpisCard kpis={financialKpis} />
+            <div className="flex items-center justify-end">
+              <MonthlyReportModal spaceId={activeSpace.id} baseCurrency={balances.baseCurrency} />
+            </div>
+            <FinancialHistoryCard monthly={financialHistory} quarterly={financialHistoryQuarterly} baseCurrency={balances.baseCurrency} />
+          </>
+        )}
 
         {/* Radiografia Proporcional: entendimiento en 3 segundos -- barra
             segmentada por carpeta + mapa de calor semanal, en vez de exigir
