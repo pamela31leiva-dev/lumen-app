@@ -3,16 +3,24 @@
 import { useMemo, useRef, useState, useTransition, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
-import { processBulkImport } from '@/actions/import';
+import { checkImportDuplicates, processBulkImport } from '@/actions/import';
 import { buildImportPreview } from '@/domain/import/parse-row';
 import { CustomSelect } from '@/components/ui/CustomSelect';
-import type { ColumnMapping, RawImportRow } from '@/domain/types/import';
+import type { ColumnMapping, ImportDuplicateCheck, RawImportRow } from '@/domain/types/import';
 import { cn } from '@/lib/utils';
 
 type Step = 'upload' | 'mapping' | 'preview';
 
 interface BulkImportModalProps {
   spaceId: string;
+}
+
+/** SHA-256 del contenido exacto del archivo, calculado en el navegador (Web Crypto, sin dependencias nuevas) -- permite reconocer "este archivo ya se subio" sin depender del nombre. */
+async function computeFileHash(buffer: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export function BulkImportModal({ spaceId }: BulkImportModalProps) {
@@ -25,6 +33,8 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileHash, setFileHash] = useState<string | null>(null);
+  const [fileSizeBytes, setFileSizeBytes] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<RawImportRow[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({
@@ -34,6 +44,10 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
     typeColumn: null,
   });
 
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [duplicateCheck, setDuplicateCheck] = useState<ImportDuplicateCheck | null>(null);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const preview = useMemo(() => {
@@ -41,14 +55,23 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
     return buildImportPreview(rawRows, mapping);
   }, [step, rawRows, mapping]);
 
+  const duplicateRowIndexSet = useMemo(
+    () => new Set(duplicateCheck?.duplicateRowIndexes ?? []),
+    [duplicateCheck],
+  );
+
   function resetState() {
     setStep('upload');
     setFileName(null);
+    setFileHash(null);
+    setFileSizeBytes(0);
     setHeaders([]);
     setRawRows([]);
     setMapping({ dateColumn: '', amountColumn: '', descriptionColumn: null, typeColumn: null });
     setError(null);
     setSuccessMessage(null);
+    setDuplicateCheck(null);
+    setSkipDuplicates(true);
   }
 
   function handleClose() {
@@ -78,6 +101,8 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
 
       const detectedHeaders = Object.keys(json[0]);
       setFileName(file.name);
+      setFileHash(await computeFileHash(buffer));
+      setFileSizeBytes(file.size);
       setHeaders(detectedHeaders);
       setRawRows(json);
       setMapping({
@@ -100,11 +125,36 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
     if (file) void loadFile(file);
   }
 
-  function handleSubmitImport() {
-    if (!preview) return;
+  async function handleGoToPreview() {
     setError(null);
+    setDuplicateCheck(null);
+    setStep('preview');
+    if (!fileHash) return;
+    setIsCheckingDuplicates(true);
+    try {
+      const result = await checkImportDuplicates(spaceId, fileHash, rawRows, mapping);
+      if ('error' in result) {
+        console.error('Error al comprobar duplicados:', result.error);
+      } else {
+        setDuplicateCheck(result);
+      }
+    } finally {
+      setIsCheckingDuplicates(false);
+    }
+  }
+
+  function handleSubmitImport() {
+    if (!preview || !fileName || !fileHash) return;
+    setError(null);
+    const skipRowIndexes = skipDuplicates ? (duplicateCheck?.duplicateRowIndexes ?? []) : [];
     startTransition(async () => {
-      const result = await processBulkImport(spaceId, rawRows, mapping);
+      const result = await processBulkImport(
+        spaceId,
+        rawRows,
+        mapping,
+        { name: fileName, hash: fileHash, sizeBytes: fileSizeBytes },
+        skipRowIndexes,
+      );
       if (!result.success) {
         setError(result.error);
         return;
@@ -112,7 +162,7 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
       setSuccessMessage(
         `Se importaron ${result.importedCount} movimientos a "Por confirmar"${
           result.skippedCount > 0 ? ` (se omitieron ${result.skippedCount} filas con datos incompletos)` : ''
-        }.`,
+        }${result.duplicateCount > 0 ? ` (se omitieron ${result.duplicateCount} duplicados)` : ''}.`,
       );
       router.refresh();
     });
@@ -226,7 +276,7 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
                     <button
                       type="button"
                       disabled={!mapping.dateColumn || !mapping.amountColumn}
-                      onClick={() => setStep('preview')}
+                      onClick={() => void handleGoToPreview()}
                       className="rounded-lg bg-wealth px-4 py-2 text-sm font-medium text-white transition hover:bg-wealth-hover disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Ver vista previa
@@ -246,7 +296,40 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
                         {preview.invalidRows.length} filas con datos incompletos (se omiten)
                       </span>
                     )}
+                    {isCheckingDuplicates && (
+                      <span className="rounded-full bg-white/5 px-3 py-1 font-medium text-stone-400">
+                        Comprobando duplicados...
+                      </span>
+                    )}
                   </div>
+
+                  {duplicateCheck?.fileAlreadyImported && (
+                    <div className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-xs text-gold">
+                      Este mismo archivo ya se importo el{' '}
+                      {new Date(duplicateCheck.fileAlreadyImported.importedAt).toLocaleDateString('es-CO')} (
+                      {duplicateCheck.fileAlreadyImported.importedCount} filas importadas). Si continuas, revisa que
+                      no estes subiendo el mismo extracto dos veces.
+                    </div>
+                  )}
+
+                  {duplicateCheck && duplicateCheck.duplicateRowIndexes.length > 0 && (
+                    <div className="flex flex-col gap-2 rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-xs text-gold">
+                      <p>
+                        {duplicateCheck.duplicateRowIndexes.length} de las filas listas parecen ya existir en este
+                        espacio (misma fecha, monto, tipo y descripcion). Omitirlas evita alterar tus saldos por
+                        error.
+                      </p>
+                      <label className="flex items-center gap-2 text-stone-200">
+                        <input
+                          type="checkbox"
+                          checked={skipDuplicates}
+                          onChange={(e) => setSkipDuplicates(e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-white/20 bg-transparent"
+                        />
+                        Omitir duplicados al importar
+                      </label>
+                    </div>
+                  )}
 
                   <div className="overflow-x-auto rounded-lg border border-white/10">
                     <table className="w-full text-left text-xs">
@@ -271,6 +354,8 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
                             <td className="px-3 py-2">
                               {row.errors.length > 0 ? (
                                 <span className="text-gold">Revisar: {row.errors.join(', ')}</span>
+                              ) : duplicateRowIndexSet.has(row.rowIndex) ? (
+                                <span className="text-gold">Ya existe</span>
                               ) : (
                                 <span className="text-emerald-400">Lista</span>
                               )}
@@ -303,7 +388,13 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
                         onClick={handleSubmitImport}
                         className="rounded-lg bg-wealth px-4 py-2 text-sm font-medium text-white transition hover:bg-wealth-hover disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {isPending ? 'Importando...' : `Importar ${preview.validRows.length} filas`}
+                        {isPending
+                          ? 'Importando...'
+                          : `Importar ${
+                              skipDuplicates
+                                ? preview.validRows.length - duplicateRowIndexSet.size
+                                : preview.validRows.length
+                            } filas`}
                       </button>
                     )}
                   </div>

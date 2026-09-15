@@ -19,7 +19,8 @@ export type CaptureSource =
   | 'ai_photo'
   | 'ai_document'
   | 'import'
-  | 'telegram';
+  | 'telegram'
+  | 'xml_invoice';
 
 /** Subconjunto de fuentes que efectivamente pasan por el motor de IA. */
 export type AiCaptureSource = Extract<CaptureSource, 'ai_text' | 'ai_voice' | 'ai_photo' | 'ai_document'>;

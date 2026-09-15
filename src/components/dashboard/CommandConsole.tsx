@@ -15,6 +15,13 @@ const BulkImportModal = dynamic(
   { ssr: false, loading: () => null },
 );
 
+// Se usa con poca frecuencia (solo al recibir una factura electronica) --
+// mismo motivo de diferir la carga que BulkImportModal.
+const XmlInvoiceUploadModal = dynamic(
+  () => import('@/components/dashboard/XmlInvoiceUploadModal').then((mod) => mod.XmlInvoiceUploadModal),
+  { ssr: false, loading: () => null },
+);
+
 interface CommandConsoleProps {
   spaceId: string;
 }
@@ -489,8 +496,9 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
           {isPending ? '...' : 'Registrar'}
         </button>
 
-        <div className="hidden shrink-0 sm:block">
+        <div className="hidden shrink-0 gap-2 sm:flex">
           <BulkImportModal spaceId={spaceId} />
+          <XmlInvoiceUploadModal spaceId={spaceId} />
         </div>
       </div>
 

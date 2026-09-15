@@ -37,5 +37,13 @@ export interface ImportPreviewResult {
 }
 
 export type BulkImportResult =
-  | { success: true; importedCount: number; skippedCount: number }
+  | { success: true; importedCount: number; skippedCount: number; duplicateCount: number }
   | { success: false; error: string };
+
+/** Resultado de comprobar duplicados ANTES de importar -- ver checkImportDuplicates en actions/import.ts. */
+export interface ImportDuplicateCheck {
+  /** Si este mismo archivo (por contenido, no por nombre) ya se importo antes en este espacio. */
+  fileAlreadyImported: { importedAt: string; rowCount: number; importedCount: number } | null;
+  /** rowIndex de las filas validas cuya huella ya existe como transaccion en este espacio. */
+  duplicateRowIndexes: number[];
+}
