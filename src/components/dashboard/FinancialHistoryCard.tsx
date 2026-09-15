@@ -12,7 +12,11 @@ interface FinancialHistoryCardProps {
 
 type Granularity = 'monthly' | 'quarterly';
 
-const MONTH_FORMAT = new Intl.DateTimeFormat('es-CO', { month: 'short', year: 'numeric' });
+// timeZone: 'UTC' es obligatorio aqui -- period_start llega como fecha pura
+// ("2026-09-01") sin hora, que Date la interpreta como medianoche UTC. Sin
+// fijar la zona, formatear en un huso horario detras de UTC (ej. Colombia,
+// UTC-5) mostraria "agosto" para el 1 de septiembre.
+const MONTH_FORMAT = new Intl.DateTimeFormat('es-CO', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 function quarterLabel(isoDate: string): string {
   const d = new Date(isoDate);
