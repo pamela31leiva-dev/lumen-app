@@ -102,20 +102,30 @@ export async function updateAlertPreferences(
   return { success: true };
 }
 
+/** Roles asignables desde la interfaz de invitacion/gestion -- 'owner' se excluye a proposito: transferir la propiedad es una decision aparte, no una casilla mas en este selector. */
+export type AssignableRole = Exclude<MemberRole, 'owner'>;
+
+function isAssignableRole(value: string): value is AssignableRole {
+  return value === 'admin' || value === 'editor' || value === 'viewer';
+}
+
 /**
- * Añade a un colaborador existente de Lumen a este espacio por su correo.
- * No envia ningun email real (no hay servicio de envio conectado): la
- * persona invitada debe ya tener cuenta en Lumen. Buscar el perfil por
- * correo requiere la service role porque profiles_select_shared_space
- * (0004) solo deja ver perfiles de gente con la que YA se comparte un
- * espacio -- exactamente lo que todavia no es cierto en este momento. El
- * INSERT real en space_members si pasa por el cliente con sesion, asi que
- * RLS (space_members_insert_admin: solo owner/admin) sigue siendo quien
- * decide si la operacion se permite, no esta funcion.
+ * Añade a un colaborador existente de Lumen a este espacio por su correo,
+ * con el rol elegido (RBAC, Bloque P4: admin/editor/viewer -- ver
+ * domain/permissions.ts para lo que cada uno puede hacer). No envia ningun
+ * email real (no hay servicio de envio conectado): la persona invitada debe
+ * ya tener cuenta en Lumen. Buscar el perfil por correo requiere la service
+ * role porque profiles_select_shared_space (0004) solo deja ver perfiles de
+ * gente con la que YA se comparte un espacio -- exactamente lo que todavia
+ * no es cierto en este momento. El INSERT real en space_members si pasa por
+ * el cliente con sesion, asi que RLS (space_members_insert_admin: solo
+ * owner/admin) sigue siendo quien decide si la operacion se permite, no
+ * esta funcion.
  */
 export async function inviteMemberByEmail(
   spaceId: string,
   email: string,
+  role: AssignableRole = 'editor',
 ): Promise<{ success: true } | { success: false; error: string }> {
   const supabase = await getSupabaseServerClient();
   const {
@@ -130,6 +140,9 @@ export async function inviteMemberByEmail(
   if (!trimmedEmail) {
     return { success: false, error: 'Escribe un correo.' };
   }
+  if (!isAssignableRole(role)) {
+    return { success: false, error: 'Rol invalido.' };
+  }
 
   const serviceRole = getSupabaseServiceRoleClient();
   if (!serviceRole) {
@@ -143,7 +156,7 @@ export async function inviteMemberByEmail(
 
   const { error } = await supabase
     .from('space_members')
-    .insert({ space_id: spaceId, user_id: profile.id, role: 'editor', invited_by: user.id });
+    .insert({ space_id: spaceId, user_id: profile.id, role, invited_by: user.id });
 
   if (error) {
     if (error.code === '23505') {
@@ -166,7 +179,7 @@ export async function inviteMemberByEmail(
  * no bloquea ni hace fallar la remocion en si (esa ya quedo aplicada en la
  * base de datos antes de llamar esto).
  */
-async function broadcastMemberRemoved(spaceId: string, removedUserId: string): Promise<void> {
+async function broadcastToSpace(spaceId: string, event: string, payload: Record<string, unknown>): Promise<void> {
   try {
     const supabase = await getSupabaseServerClient();
     const channel = supabase.channel(`transactions-${spaceId}`);
@@ -174,9 +187,7 @@ async function broadcastMemberRemoved(spaceId: string, removedUserId: string): P
       new Promise<void>((resolve) => {
         channel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            channel
-              .send({ type: 'broadcast', event: 'member_removed', payload: { userId: removedUserId } })
-              .finally(resolve);
+            channel.send({ type: 'broadcast', event, payload }).finally(resolve);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             resolve();
           }
@@ -186,7 +197,7 @@ async function broadcastMemberRemoved(spaceId: string, removedUserId: string): P
     ]);
     await supabase.removeChannel(channel);
   } catch (err) {
-    console.error('No se pudo transmitir el aviso de remocion en vivo (no crítico):', err);
+    console.error(`No se pudo transmitir el aviso "${event}" en vivo (no crítico):`, err);
   }
 }
 
@@ -234,7 +245,63 @@ export async function removeMember(
     return { success: false, error: 'No tienes permiso para remover a esa persona.' };
   }
 
-  await broadcastMemberRemoved(spaceId, userId);
+  await broadcastToSpace(spaceId, 'member_removed', { userId });
+
+  return { success: true };
+}
+
+/**
+ * Cambia el rol de un colaborador (RBAC, Bloque P4). 'owner' nunca es un
+ * valor aceptado aqui -- transferir la propiedad queda fuera de este flujo a
+ * proposito. Tampoco se puede tocar la fila de un owner desde esta funcion
+ * (aunque solo hubiera uno, el trigger prevent_ownerless_space -- 0029 --
+ * igual lo bloquearia; esto solo da un mensaje mas claro que un error de
+ * base de datos). RLS (space_members_update_admin) exige owner/admin.
+ */
+export async function updateMemberRole(
+  spaceId: string,
+  userId: string,
+  role: AssignableRole,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'No autorizado' };
+  }
+
+  if (!isAssignableRole(role)) {
+    return { success: false, error: 'Rol invalido.' };
+  }
+
+  const { data: target } = await supabase
+    .from('space_members')
+    .select('role')
+    .eq('space_id', spaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (target?.role === 'owner') {
+    return { success: false, error: 'No puedes cambiar el rol del propietario del espacio.' };
+  }
+
+  const { error, count } = await supabase
+    .from('space_members')
+    .update({ role }, { count: 'exact' })
+    .eq('space_id', spaceId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error al cambiar el rol del miembro:', error);
+    return { success: false, error: 'No se pudo cambiar el rol.' };
+  }
+  if (!count) {
+    return { success: false, error: 'No tienes permiso para cambiar el rol de esa persona.' };
+  }
+
+  await broadcastToSpace(spaceId, 'member_role_changed', { userId, role });
 
   return { success: true };
 }

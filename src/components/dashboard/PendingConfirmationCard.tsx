@@ -25,6 +25,8 @@ interface PendingConfirmationCardProps {
   accounts: AccountBalance[];
   categories: CategoryOption[];
   baseCurrency: string;
+  /** RBAC (Bloque P4): un Visor puede ver la bandeja pero no confirmar/descartar/editar -- RLS ya bloquea el insert/update de todas formas, esto solo evita mostrar un formulario que terminaria en un error de permiso. */
+  canEdit: boolean;
 }
 
 export function PendingConfirmationCard({
@@ -33,6 +35,7 @@ export function PendingConfirmationCard({
   accounts,
   categories,
   baseCurrency,
+  canEdit,
 }: PendingConfirmationCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -240,6 +243,54 @@ export function PendingConfirmationCard({
       }
       setDocumentUrl(result.url);
     });
+  }
+
+  // RBAC (Bloque P4): un Visor ve exactamente la misma informacion (monto,
+  // confianza, documento adjunto) pero sin ningun control que mute algo --
+  // nunca llega a montar el formulario ni los botones Confirmar/Descartar.
+  if (!canEdit) {
+    return (
+      <div
+        id={`pending-${transaction.id}`}
+        className="animate-fade-scale-in rounded-xl border border-white/10 bg-elevated p-5 transition-colors hover:border-gold/15"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-stone-100">{transaction.description ?? 'Movimiento sin descripcion'}</p>
+              {folder !== 'personal' && (
+                <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-stone-400">
+                  {FOLDER_LABEL[folder]}
+                </span>
+              )}
+            </div>
+            <p className="amount text-xs text-stone-500">
+              Pendiente por confirmar · {transaction.amountOriginal.toLocaleString('es-CO')} {transaction.currencyOriginal}
+            </p>
+          </div>
+          {confidencePct !== null && (
+            <span className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-medium text-stone-400">Confianza {confidencePct}%</span>
+          )}
+        </div>
+
+        {transaction.receiptId && (
+          <button
+            type="button"
+            onClick={handleViewDocument}
+            className="mt-2 text-xs text-emerald-400 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-300"
+          >
+            Ver documento adjunto
+          </button>
+        )}
+        {documentUrl && (
+          <a href={documentUrl} target="_blank" rel="noreferrer" className="mt-1 block text-xs text-stone-400 underline">
+            Abrir enlace (expira en 60s)
+          </a>
+        )}
+
+        <p className="mt-3 text-[11px] text-stone-600">Tu rol de Visor solo permite consultar -- no puedes confirmar ni descartar movimientos.</p>
+      </div>
+    );
   }
 
   // Vista optimista: reemplaza la tarjeta editable de inmediato al tocar

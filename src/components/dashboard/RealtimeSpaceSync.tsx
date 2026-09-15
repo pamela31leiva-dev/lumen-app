@@ -21,6 +21,8 @@ interface TransactionChangePayload {
 
 const TYPE_LABEL: Record<string, string> = { income: 'un ingreso', expense: 'un gasto', transfer: 'una transferencia' };
 
+const ROLE_LABEL: Record<string, string> = { admin: 'Admin', editor: 'Editor', viewer: 'Solo lectura' };
+
 function displayName(members: SpaceMemberSummary[], userId: string): string {
   const member = members.find((m) => m.userId === userId);
   if (!member) return 'Alguien mas';
@@ -85,6 +87,17 @@ export function RealtimeSpaceSync({ spaceId, currentUserId, members }: RealtimeS
         if (payload.payload?.userId === currentUserId) {
           setRevoked(true);
         }
+      })
+      // Cambio de rol en vivo (RBAC, Bloque P4): si a esta persona le cambian
+      // el rol mientras tiene el tablero abierto, un refresh trae de vuelta
+      // la pagina ya renderizada server-side con los permisos nuevos (los
+      // botones de captura/edicion aparecen o desaparecen segun corresponda),
+      // sin necesidad de recargar toda la pestaña como si fuera una revocacion.
+      .on('broadcast', { event: 'member_role_changed' }, (payload) => {
+        if (payload.payload?.userId !== currentUserId) return;
+        const newRole = typeof payload.payload?.role === 'string' ? payload.payload.role : null;
+        setNotice(`Tu rol en este espacio cambio a ${newRole ? (ROLE_LABEL[newRole] ?? newRole) : 'otro nivel'}.`);
+        router.refresh();
       })
       .subscribe();
 

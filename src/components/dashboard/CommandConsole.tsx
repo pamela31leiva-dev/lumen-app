@@ -24,6 +24,8 @@ const XmlInvoiceUploadModal = dynamic(
 
 interface CommandConsoleProps {
   spaceId: string;
+  /** RBAC (Bloque P4): owner/admin/editor. Un Visor no puede capturar movimientos (RLS ya lo bloquea; esto evita mostrar una consola que terminaria en un error de permiso). */
+  canEdit: boolean;
 }
 
 function sourceForMimeType(mimeType: string): AiCaptureSource {
@@ -130,7 +132,7 @@ function getSpeechRecognitionCtor(): (new () => MinimalSpeechRecognition) | null
  */
 const MAX_FILE_SIZE_MB = 15;
 
-export function CommandConsole({ spaceId }: CommandConsoleProps) {
+export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
   const router = useRouter();
   const [text, setText] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -350,6 +352,20 @@ export function CommandConsole({ spaceId }: CommandConsoleProps) {
     speechSafetyTimerRef.current = setTimeout(() => {
       recognitionRef.current?.stop();
     }, SPEECH_SAFETY_TIMEOUT_MS);
+  }
+
+  // RBAC (Bloque P4): un Visor no puede capturar nada -- se muestra un aviso
+  // en vez de una consola completa que terminaria en un error de RLS al
+  // tocar "Registrar".
+  if (!canEdit) {
+    return (
+      <section
+        id="quick-capture"
+        className="sticky top-4 z-20 rounded-xl border border-white/10 bg-elevated/95 px-4 py-3 text-sm text-stone-500 shadow-2xl shadow-black/40 backdrop-blur sm:px-5"
+      >
+        Tu rol de Visor en este espacio solo permite consultar -- no puedes registrar movimientos.
+      </section>
+    );
   }
 
   return (

@@ -11,6 +11,10 @@ interface RecurringIncomesCardProps {
   spaceId: string;
   baseCurrency: string;
   recurringIncomes: RecurringIncomeSummary[];
+  /** RBAC (Bloque P4): owner/admin/editor -- crear y pausar/reactivar. */
+  canEdit: boolean;
+  /** RBAC (Bloque P4): owner/admin -- eliminar (mismo umbral que recurring_incomes_delete_admin). */
+  canManage: boolean;
 }
 
 const MONTH_LABEL = [
@@ -27,7 +31,7 @@ const MONTH_OPTIONS = MONTH_LABEL.map((label, i) => ({ value: String(i + 1), lab
  * cada carga del tablero). El ajuste anual es opcional -- sin el, el monto
  * se repite igual mes a mes.
  */
-export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes }: RecurringIncomesCardProps) {
+export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes, canEdit, canManage }: RecurringIncomesCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -105,7 +109,7 @@ export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes }
     <section className="rounded-xl border border-white/10 bg-elevated p-5 transition-colors hover:border-gold/15">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500">Ingresos Fijos</p>
-        {!showForm && (
+        {canEdit && !showForm && (
           <button
             type="button"
             onClick={() => setShowForm(true)}
@@ -144,24 +148,30 @@ export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes }
                   {formatMoney(income.amount, income.currency)} / mes
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleToggleActive(income)}
-                  disabled={isPending && busyId === income.id}
-                  className="text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300 disabled:opacity-50"
-                >
-                  {income.isActive ? 'Pausar' : 'Reactivar'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(income)}
-                  disabled={isPending && busyId === income.id}
-                  className="text-xs text-stone-600 underline decoration-white/10 underline-offset-2 hover:text-red-400 disabled:opacity-50"
-                >
-                  Eliminar
-                </button>
-              </div>
+              {(canEdit || canManage) && (
+                <div className="flex shrink-0 items-center gap-3">
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(income)}
+                      disabled={isPending && busyId === income.id}
+                      className="text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300 disabled:opacity-50"
+                    >
+                      {income.isActive ? 'Pausar' : 'Reactivar'}
+                    </button>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(income)}
+                      disabled={isPending && busyId === income.id}
+                      className="text-xs text-stone-600 underline decoration-white/10 underline-offset-2 hover:text-red-400 disabled:opacity-50"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

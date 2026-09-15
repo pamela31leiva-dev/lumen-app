@@ -2,7 +2,8 @@
 
 import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { inviteMemberByEmail, removeMember } from '@/actions/settings';
+import { inviteMemberByEmail, removeMember, updateMemberRole, type AssignableRole } from '@/actions/settings';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import type { SpaceMemberSummary } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +14,13 @@ const ROLE_LABEL: Record<string, string> = {
   viewer: 'Solo lectura',
 };
 
+/** 'owner' se excluye a proposito -- transferir la propiedad es una decision aparte, no una opcion mas de este selector. */
+const ASSIGNABLE_ROLE_OPTIONS: { value: AssignableRole; label: string; hint: string }[] = [
+  { value: 'admin', label: 'Admin', hint: 'Administra el espacio' },
+  { value: 'editor', label: 'Editor', hint: 'Registra y edita' },
+  { value: 'viewer', label: 'Solo lectura', hint: 'Solo consulta' },
+];
+
 interface SpaceMembersManagerProps {
   spaceId: string;
   members: SpaceMemberSummary[];
@@ -21,19 +29,26 @@ interface SpaceMembersManagerProps {
 
 /**
  * "Colaboracion Real": conecta visualmente space_members, que ya opera en
- * Supabase (RLS decide quien puede invitar/remover -- ver
- * space_members_insert_admin / _delete_admin_or_self). No envia correos de
- * verdad: la persona invitada debe ya tener cuenta en Lumen, asi que el
- * error mas comun ("no existe esa cuenta") se explica de forma directa en
- * vez de simular un envio que no pasa nada.
+ * Supabase (RLS decide quien puede invitar/remover/cambiar roles -- ver
+ * space_members_insert_admin / _update_admin / _delete_admin_or_self). No
+ * envia correos de verdad: la persona invitada debe ya tener cuenta en
+ * Lumen, asi que el error mas comun ("no existe esa cuenta") se explica de
+ * forma directa en vez de simular un envio que no pasa nada.
+ *
+ * RBAC (Bloque P4): el rol se elige al invitar y se puede cambiar despues
+ * para cualquier miembro que no sea el owner (su fila nunca muestra
+ * controles de rol/remocion, igual que antes) -- ver domain/permissions.ts
+ * para lo que cada rol habilita en el resto de la interfaz.
  */
 export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMembersManagerProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<AssignableRole>('editor');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+  const [changingRoleId, setChangingRoleId] = useState<string | null>(null);
 
   function handleInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,7 +58,7 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
     if (!trimmed) return;
 
     startTransition(async () => {
-      const result = await inviteMemberByEmail(spaceId, trimmed);
+      const result = await inviteMemberByEmail(spaceId, trimmed, inviteRole);
       if (!result.success) {
         setError(result.error);
         return;
@@ -72,6 +87,19 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
     });
   }
 
+  function handleRoleChange(userId: string, role: string) {
+    setError(null);
+    setChangingRoleId(userId);
+    updateMemberRole(spaceId, userId, role as AssignableRole).then((result) => {
+      setChangingRoleId(null);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   const visibleMembers = members.filter((m) => !removingIds.has(m.userId));
 
   return (
@@ -87,6 +115,9 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
             disabled={isPending}
             className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
           />
+          <div className="w-full sm:w-40">
+            <CustomSelect value={inviteRole} onChange={(value) => setInviteRole(value as AssignableRole)} options={ASSIGNABLE_ROLE_OPTIONS} />
+          </div>
           <button
             type="submit"
             disabled={isPending || !email.trim()}
@@ -111,9 +142,20 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="rounded-full bg-emerald-600/15 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
-                {ROLE_LABEL[member.role] ?? member.role}
-              </span>
+              {canManage && member.role !== 'owner' ? (
+                <div className="w-32">
+                  <CustomSelect
+                    value={member.role}
+                    onChange={(value) => handleRoleChange(member.userId, value)}
+                    disabled={changingRoleId === member.userId}
+                    options={ASSIGNABLE_ROLE_OPTIONS}
+                  />
+                </div>
+              ) : (
+                <span className="rounded-full bg-emerald-600/15 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
+                  {ROLE_LABEL[member.role] ?? member.role}
+                </span>
+              )}
               {canManage && member.role !== 'owner' && (
                 <button
                   type="button"

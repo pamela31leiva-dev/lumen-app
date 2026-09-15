@@ -21,6 +21,8 @@ interface ActionFeedProps {
   billReminderDays: number;
   /** Centro de Ingesta: capturas que ni Gemini ni el motor local pudieron interpretar. */
   failedCaptures: FailedCaptureSummary[];
+  /** RBAC (Bloque P4): owner/admin/editor. Un Visor ve la bandeja pero sin controles de mutacion. */
+  canEdit: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function ActionFeed({
   bills,
   billReminderDays,
   failedCaptures,
+  canEdit,
 }: ActionFeedProps) {
   const hasPending = pendingTransactions.length > 0;
   const hasOverdueObligation = recurringObligations.some((o) => o.isOverdue);
@@ -69,6 +72,7 @@ export function ActionFeed({
             accounts={accounts}
             categories={categories}
             baseCurrency={baseCurrency}
+            canEdit={canEdit}
           />
         ))}
 

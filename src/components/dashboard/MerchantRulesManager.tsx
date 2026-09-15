@@ -17,6 +17,9 @@ interface MerchantRulesManagerProps {
   rules: MerchantRuleSummary[];
   categories: CategoryOption[];
   accounts: AccountOption[];
+  /** RBAC (Bloque P4): owner/admin/editor -- crear y editar (mismo umbral que merchant_rules_insert_editor/_update_editor). */
+  canEdit: boolean;
+  /** RBAC (Bloque P4): owner/admin -- eliminar (merchant_rules_delete_admin). */
   canManage: boolean;
 }
 
@@ -161,7 +164,7 @@ function RuleForm({
  * auto-confirma nada: la persona sigue revisando antes de que cuente para
  * saldos, la regla solo le ahorra corregir lo mismo cada vez.
  */
-export function MerchantRulesManager({ spaceId, rules, categories, accounts, canManage }: MerchantRulesManagerProps) {
+export function MerchantRulesManager({ spaceId, rules, categories, accounts, canEdit, canManage }: MerchantRulesManagerProps) {
   const router = useRouter();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -216,19 +219,23 @@ export function MerchantRulesManager({ spaceId, rules, categories, accounts, can
                 {[rule.categoryName, rule.accountName, rule.folder ? FOLDER_LABEL[rule.folder] : null, ...rule.tags].filter(Boolean).join(' · ') || 'Sin acciones configuradas'}
               </p>
             </div>
-            {canManage && (
+            {(canEdit || canManage) && (
               <div className="flex shrink-0 items-center gap-3">
-                <button type="button" onClick={() => setEditingId(rule.id)} className="text-xs text-stone-400 hover:text-stone-200">
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  disabled={deletingId === rule.id}
-                  onClick={() => handleDelete(rule.id)}
-                  className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
-                >
-                  {deletingId === rule.id ? 'Eliminando...' : 'Eliminar'}
-                </button>
+                {canEdit && (
+                  <button type="button" onClick={() => setEditingId(rule.id)} className="text-xs text-stone-400 hover:text-stone-200">
+                    Editar
+                  </button>
+                )}
+                {canManage && (
+                  <button
+                    type="button"
+                    disabled={deletingId === rule.id}
+                    onClick={() => handleDelete(rule.id)}
+                    className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                  >
+                    {deletingId === rule.id ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -237,7 +244,7 @@ export function MerchantRulesManager({ spaceId, rules, categories, accounts, can
 
       {error && <p className="text-xs text-red-400">{error}</p>}
 
-      {canManage &&
+      {canEdit &&
         (showAddForm ? (
           <RuleForm
             spaceId={spaceId}

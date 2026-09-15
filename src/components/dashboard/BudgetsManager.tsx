@@ -12,6 +12,9 @@ interface BudgetsManagerProps {
   budgets: BudgetSummary[];
   categories: CategoryOption[];
   baseCurrency: string;
+  /** RBAC (Bloque P4): owner/admin/editor -- crear (mismo umbral que budgets_insert_editor). */
+  canEdit: boolean;
+  /** RBAC (Bloque P4): owner/admin -- eliminar (budgets_delete_admin). */
   canManage: boolean;
 }
 
@@ -21,7 +24,7 @@ interface BudgetsManagerProps {
  * arrastre entre meses, el numero simplemente se compara contra el gasto
  * real de cada mes.
  */
-export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, canManage }: BudgetsManagerProps) {
+export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, canEdit, canManage }: BudgetsManagerProps) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [categoryId, setCategoryId] = useState('');
@@ -96,7 +99,7 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
 
       {error && <p className="text-xs text-red-400">{error}</p>}
 
-      {canManage &&
+      {canEdit &&
         (showForm ? (
           <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-obsidian p-4 sm:flex-row sm:items-end">
             <div className="flex-1">

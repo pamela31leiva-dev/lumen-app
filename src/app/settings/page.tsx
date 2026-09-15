@@ -3,6 +3,7 @@ import { getSpaceMembers } from '@/actions/settings';
 import { getMerchantRules } from '@/actions/merchant-rules';
 import { listInboundChannels } from '@/actions/inbound-channels';
 import { getBudgets } from '@/actions/budgets';
+import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
 import { RenameSpaceForm } from '@/components/dashboard/RenameSpaceForm';
@@ -45,7 +46,11 @@ export default async function SettingsPage() {
     getBudgets(activeSpace.id),
   ]);
 
-  const canEditSpace = activeSpace.role === 'owner' || activeSpace.role === 'admin';
+  // RBAC (Bloque P4): mismo umbral que las politicas RLS (has_space_role) --
+  // canEdit = owner/admin/editor (crear/editar datos), canManage = owner/admin
+  // (administracion del espacio: renombrar, miembros/roles, eliminar).
+  const canEdit = canEditSpace(activeSpace.role);
+  const canManage = canManageSpace(activeSpace.role);
   // Monetizacion asimetrica: solo los espacios de Negocio sin Pro pierden la
   // exportacion para contadores. Personal/Familiar/Proyecto siempre la tienen.
   const exportRequiresPro = activeSpace.type === 'business' && !activeSpace.isPro;
@@ -69,7 +74,7 @@ export default async function SettingsPage() {
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Nombre del espacio</h2>
-          <RenameSpaceForm spaceId={activeSpace.id} currentName={activeSpace.name} canEdit={canEditSpace} />
+          <RenameSpaceForm spaceId={activeSpace.id} currentName={activeSpace.name} canEdit={canManage} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
@@ -77,7 +82,7 @@ export default async function SettingsPage() {
             <h2 className="text-sm font-medium text-stone-200">Miembros del Espacio ({members.length})</h2>
             <CreateSpaceDialog triggerLabel="+ Nuevo espacio" />
           </div>
-          <SpaceMembersManager spaceId={activeSpace.id} members={members} canManage={canEditSpace} />
+          <SpaceMembersManager spaceId={activeSpace.id} members={members} canManage={canManage} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
@@ -90,7 +95,7 @@ export default async function SettingsPage() {
           <p className="mb-3 text-xs text-stone-500">
             Sin envio de correo o push todavia -- esto ajusta los avisos dentro de la app.
           </p>
-          <AlertPreferencesForm spaceId={activeSpace.id} currentBillReminderDays={activeSpace.billReminderDays} canEdit={canEditSpace} />
+          <AlertPreferencesForm spaceId={activeSpace.id} currentBillReminderDays={activeSpace.billReminderDays} canEdit={canManage} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
@@ -103,13 +108,14 @@ export default async function SettingsPage() {
             rules={merchantRules}
             categories={categories}
             accounts={balances.accounts.map((a) => ({ accountId: a.accountId, name: a.name }))}
-            canManage={canEditSpace}
+            canEdit={canEdit}
+            canManage={canManage}
           />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Bandeja Automatica</h2>
-          <InboundChannelsManager spaceId={activeSpace.id} channels={inboundChannels} canManage={canEditSpace} />
+          <InboundChannelsManager spaceId={activeSpace.id} channels={inboundChannels} canManage={canManage} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
@@ -117,7 +123,14 @@ export default async function SettingsPage() {
           <p className="mb-3 text-xs text-stone-500">
             Un monto mensual por categoria de gasto -- el Reporte Mensual del Panorama lo compara contra lo que realmente gastaste.
           </p>
-          <BudgetsManager spaceId={activeSpace.id} budgets={budgets} categories={categories} baseCurrency={balances.baseCurrency} canManage={canEditSpace} />
+          <BudgetsManager
+            spaceId={activeSpace.id}
+            budgets={budgets}
+            categories={categories}
+            baseCurrency={balances.baseCurrency}
+            canEdit={canEdit}
+            canManage={canManage}
+          />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
@@ -138,7 +151,7 @@ export default async function SettingsPage() {
               spaceId={activeSpace.id}
               items={transactionHistory}
               categories={categories}
-              canDelete={canEditSpace}
+              canDelete={canManage}
             />
           </div>
         </section>

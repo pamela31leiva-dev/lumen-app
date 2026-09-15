@@ -5,6 +5,7 @@ import { getExecutiveBoardSnapshot } from '@/actions/snapshot';
 import { getFailedCaptures } from '@/actions/ingestion';
 import { getFinancialHistory } from '@/actions/analytics-history';
 import { computeFinancialKpis, resampleQuarterly } from '@/domain/analytics/kpis';
+import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -67,6 +68,13 @@ export default async function ExecutiveBoardPage() {
   // sin is_pro. Personal/Familiar/Proyecto siempre la tienen gratis.
   const businessAnalyticsLocked = activeSpace.type === 'business' && !activeSpace.isPro;
 
+  // RBAC (Bloque P4): mismo umbral que las politicas RLS (has_space_role) --
+  // canEdit habilita capturar/confirmar/importar (owner/admin/editor);
+  // canManage habilita administracion del espacio (owner/admin). Un Visor no
+  // cumple ninguno de los dos.
+  const canEdit = canEditSpace(activeSpace.role);
+  const canManage = canManageSpace(activeSpace.role);
+
   // Snapshot Unico (0018): un solo round-trip a Postgres (get_executive_board_snapshot)
   // reemplaza los 9+ round-trips paralelos que antes armaban este tablero.
   const {
@@ -121,7 +129,7 @@ export default async function ExecutiveBoardPage() {
         {/* c) Consola de Comando Directa: arriba y sticky — lo primero que
             se ve, siempre alcanzable, sin depender de scroll ni de que el
             teclado virtual no tape un input fijo abajo. */}
-        <CommandConsole spaceId={activeSpace.id} />
+        <CommandConsole spaceId={activeSpace.id} canEdit={canEdit} />
 
         {/* a) Hero de Patrimonio y Proyeccion */}
         <NetWorthHero
@@ -166,10 +174,7 @@ export default async function ExecutiveBoardPage() {
             para espacios sin datos todavia. En espacios de Negocio sin Pro,
             un unico upsell reemplaza ambas (nunca bloquea lo basico). */}
         {businessAnalyticsLocked ? (
-          <BusinessProUpsell
-            spaceId={activeSpace.id}
-            canManage={activeSpace.role === 'owner' || activeSpace.role === 'admin'}
-          />
+          <BusinessProUpsell spaceId={activeSpace.id} canManage={canManage} />
         ) : (
           <>
             {businessCashInsight && <BusinessCashCard insight={businessCashInsight} baseCurrency={balances.baseCurrency} />}
@@ -191,6 +196,7 @@ export default async function ExecutiveBoardPage() {
           bills={bills}
           billReminderDays={activeSpace.billReminderDays}
           failedCaptures={failedCaptures}
+          canEdit={canEdit}
         />
 
         {/* Cero Ruido: detalle por cuenta colapsado — es consulta, no decision */}
@@ -216,7 +222,13 @@ export default async function ExecutiveBoardPage() {
         {/* Ingresos Recurrentes con Ajuste Anual (0019): pension, salario u
             otro flujo fijo, registrado una vez -- Lumen lo proyecta solo mes
             a mes (ver generate_due_recurring_incomes). */}
-        <RecurringIncomesCard spaceId={activeSpace.id} baseCurrency={balances.baseCurrency} recurringIncomes={recurringIncomes} />
+        <RecurringIncomesCard
+          spaceId={activeSpace.id}
+          baseCurrency={balances.baseCurrency}
+          recurringIncomes={recurringIncomes}
+          canEdit={canEdit}
+          canManage={canManage}
+        />
       </div>
     </main>
   );
