@@ -29,24 +29,24 @@ export function getAiExtractionAdapter(): AiExtractionPort {
       cachedAdapter = new OpenAiExtractionProvider();
       break;
     case 'gemini':
-      // Modo $0: Google Gemini (nivel gratuito de Google AI Studio) como
-      // motor principal, con el motor local determinista (regex, sin red)
-      // como respaldo automatico -- antes, si Gemini fallaba o se demoraba
-      // (confirmado en produccion: reintentos agotados a los ~30s), la
-      // captura simplemente fallaba sin alternativa. Ahora un patron comun
-      // en español ("Gaste 25.000 en mercado") se resuelve localmente en
-      // milisegundos aunque Gemini este caido.
-      cachedAdapter = new ResilientAiExtractionProvider(new GeminiExtractionProvider(), () => new LocalRegexExtractionProvider());
+      // Local-first: el motor local determinista (regex, sin red) corre
+      // SIEMPRE primero. Un monto claro ("45000", "23 900", "40 mil", "4k",
+      // "gaste 25.000 en mercado") se resuelve en milisegundos sin tocar la
+      // red. Gemini (nivel gratuito de Google AI Studio) solo se llama
+      // cuando el motor local no encuentra ningun monto reconocible --
+      // nunca al reves. Antes Gemini era el intento principal (hasta 3
+      // reintentos de 9s = ~30s en el peor caso, confirmado en produccion)
+      // y el motor local solo actuaba como respaldo tras ese fallo.
+      cachedAdapter = new ResilientAiExtractionProvider(new LocalRegexExtractionProvider(), () => new GeminiExtractionProvider());
       break;
     case 'anthropic':
-      // Cadena de 3 niveles: Claude (principal, de pago) -> Gemini
-      // (respaldo externo) -> motor local determinista (ultimo respaldo,
-      // sin red). Cada nivel solo se construye si el anterior realmente
-      // fallo, asi que Gemini/el motor local nunca se instancian si Claude
-      // ya respondio bien.
+      // Local-first tambien aqui: el motor local corre antes que CUALQUIER
+      // API externa. Solo si no encuentra un monto reconocible se recurre a
+      // la cadena externa ya existente (Claude principal, de pago -> Gemini
+      // como respaldo si Claude falla).
       cachedAdapter = new ResilientAiExtractionProvider(
-        new AnthropicExtractionProvider(),
-        () => new ResilientAiExtractionProvider(new GeminiExtractionProvider(), () => new LocalRegexExtractionProvider()),
+        new LocalRegexExtractionProvider(),
+        () => new ResilientAiExtractionProvider(new AnthropicExtractionProvider(), () => new GeminiExtractionProvider()),
       );
       break;
     default:

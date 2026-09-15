@@ -61,7 +61,17 @@ export async function getUserSpaces(): Promise<SpaceSummary[]> {
     }));
 }
 
-/** Crea un espacio nuevo. El trigger handle_new_space agrega al creador como owner automaticamente. */
+/**
+ * Crea un espacio nuevo via la funcion RPC create_space (0024). No se usa
+ * un insert directo con `.select()` encadenado: Postgres evalua el
+ * RETURNING de un INSERT bajo la MISMA politica de SELECT de la tabla
+ * (spaces_select_member, basada en membresia), pero esa membresia la crea
+ * un trigger AFTER INSERT que todavia no corrio en el instante del
+ * RETURNING -- eso rechazaba SIEMPRE la creacion manual de un espacio
+ * adicional con "No se pudo crear el espacio", aunque el insert en si
+ * fuera valido. create_space es SECURITY DEFINER: inserta y vuelve a leer
+ * el espacio sin pasar por esa politica.
+ */
 export async function createSpace(name: string, type: SpaceType, baseCurrency = 'COP'): Promise<{ success: true; spaceId: string } | { success: false; error: string }> {
   const supabase = await getSupabaseServerClient();
   const {
@@ -73,10 +83,8 @@ export async function createSpace(name: string, type: SpaceType, baseCurrency = 
   if (!trimmedName) return { success: false, error: 'El espacio necesita un nombre.' };
 
   const { data, error } = await supabase
-    .from('spaces')
-    .insert({ name: trimmedName, type, base_currency: baseCurrency, owner_id: user.id })
-    .select('id')
-    .single();
+    .rpc('create_space', { p_name: trimmedName, p_type: type, p_base_currency: baseCurrency })
+    .single<{ id: string; name: string; type: SpaceType; base_currency: string; is_pro: boolean }>();
 
   if (error || !data) {
     console.error('Error al crear el espacio:', error);
