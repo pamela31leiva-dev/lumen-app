@@ -3,6 +3,9 @@
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { buildImportPreview } from '@/domain/import/parse-row';
 import { computeRowHash } from '@/domain/import/hash';
+import { fetchActiveMerchantRules } from '@/actions/merchant-rules-core';
+import { matchMerchantRule, mergeTags } from '@/domain/rules/merchant-rules';
+import { folderToColumns } from '@/domain/folders';
 import type { BulkImportResult, ColumnMapping, ImportDuplicateCheck, RawImportRow } from '@/domain/types/import';
 
 const INSERT_CHUNK_SIZE = 250;
@@ -144,21 +147,34 @@ export async function processBulkImport(
     return { success: false, error: 'No se pudo registrar la importacion. Intenta de nuevo.' };
   }
 
-  const rowsToInsert = rowsToImport.map((row) => ({
-    space_id: spaceId,
-    type: row.type,
-    amount_original: row.amountOriginal as number,
-    currency_original: space.base_currency,
-    exchange_rate: 1,
-    source: 'import' as const,
-    status: 'pending_confirmation' as const,
-    description: row.description,
-    transaction_date: row.transactionDate as string,
-    ai_raw_interpretation: { raw: row.raw, mapping },
-    created_by: user.id,
-    import_batch_id: batch.id,
-    import_row_hash: computeRowHash(spaceId, row),
-  }));
+  // Reglas Inteligentes por Comercio (0027): las descripciones de un
+  // extracto bancario SON literalmente nombres de comercio ("NETFLIX.COM",
+  // "EPM SA ESP"), el caso de uso mas directo para este motor -- se cargan
+  // una sola vez para todo el lote, no por fila.
+  const merchantRules = await fetchActiveMerchantRules(supabase, spaceId);
+
+  const rowsToInsert = rowsToImport.map((row) => {
+    const ruleMatch = matchMerchantRule(row.description, merchantRules);
+    return {
+      space_id: spaceId,
+      type: row.type,
+      account_id: ruleMatch?.accountId ?? null,
+      category_id: ruleMatch?.categoryId ?? null,
+      amount_original: row.amountOriginal as number,
+      currency_original: space.base_currency,
+      exchange_rate: 1,
+      source: 'import' as const,
+      status: 'pending_confirmation' as const,
+      description: row.description,
+      transaction_date: row.transactionDate as string,
+      ai_raw_interpretation: { raw: row.raw, mapping },
+      created_by: user.id,
+      import_batch_id: batch.id,
+      import_row_hash: computeRowHash(spaceId, row),
+      tags: ruleMatch ? mergeTags([], ruleMatch.tags) : [],
+      ...(ruleMatch?.folder ? folderToColumns(ruleMatch.folder) : {}),
+    };
+  });
 
   let importedCount = 0;
   for (let i = 0; i < rowsToInsert.length; i += INSERT_CHUNK_SIZE) {

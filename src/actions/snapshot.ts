@@ -428,13 +428,34 @@ export async function getExecutiveBoardSnapshot(
         nextExpectedDate: nextExpectedFromRecurringIncome(row.last_generated_period),
         source: 'fixed',
       }));
-    const fixedDescriptionKeys = new Set(fixedIncomeEvents.map((e) => normalizeDescriptionKey(e.description)));
+    // Facturas/Obligaciones (0017, y 0026 via XML UBL): igual que un ingreso
+    // fijo, una factura pendiente es un evento de caja GARANTIZADO (la
+    // persona ya la registro o la recibio), no algo que haya que inferir del
+    // historico -- se modela como 'fixed' desde el primer dia, con su
+    // due_date real en vez de un patron mensual promediado.
+    const fixedBillEvents: RecurringCashEvent[] = (data.bills ?? []).map((row) => ({
+      key: `bill:${row.id}`,
+      description: row.description,
+      type: 'expense',
+      averageAmount: Number(row.amount),
+      nextExpectedDate: row.due_date,
+      source: 'fixed',
+    }));
+
+    const fixedDescriptionKeys = new Set(
+      [...fixedIncomeEvents, ...fixedBillEvents].map((e) => normalizeDescriptionKey(e.description)),
+    );
 
     const detectedEvents = detectRecurringCashEvents(patternRows).filter(
       (e) => !fixedDescriptionKeys.has(normalizeDescriptionKey(e.description)),
     );
 
-    cashFlowProjection = computeCashFlowProjection(totalBalance, [...fixedIncomeEvents, ...detectedEvents], new Date(), projectionHorizonDays);
+    cashFlowProjection = computeCashFlowProjection(
+      totalBalance,
+      [...fixedIncomeEvents, ...fixedBillEvents, ...detectedEvents],
+      new Date(),
+      projectionHorizonDays,
+    );
   }
 
   const folderDistribution: FolderDistributionSlice[] = (data.folder_distribution ?? []).map((row) => ({

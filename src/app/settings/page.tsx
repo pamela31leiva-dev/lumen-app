@@ -1,5 +1,7 @@
 import { getAccountBalances, getCategories, getIdentitySnapshot, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
 import { getSpaceMembers } from '@/actions/settings';
+import { getMerchantRules } from '@/actions/merchant-rules';
+import { listInboundChannels } from '@/actions/inbound-channels';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
 import { RenameSpaceForm } from '@/components/dashboard/RenameSpaceForm';
@@ -13,6 +15,8 @@ import { IdentitySnapshotCard } from '@/components/dashboard/IdentitySnapshotCar
 import { ExportModal } from '@/components/dashboard/ExportModal';
 import { AccountDeletionSection } from '@/components/dashboard/AccountDeletionSection';
 import { AlertPreferencesForm } from '@/components/dashboard/AlertPreferencesForm';
+import { MerchantRulesManager } from '@/components/dashboard/MerchantRulesManager';
+import { InboundChannelsManager } from '@/components/dashboard/InboundChannelsManager';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -27,13 +31,15 @@ const PLAN_LABEL: Record<PlanTier, string> = {
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances, transactionHistory, subscription, categories, identitySnapshot] = await Promise.all([
+  const [members, balances, transactionHistory, subscription, categories, identitySnapshot, merchantRules, inboundChannels] = await Promise.all([
     getSpaceMembers(activeSpace.id),
     getAccountBalances(activeSpace.id),
     getTransactionHistory(activeSpace.id),
     getMySubscription(),
     getCategories(activeSpace.id),
     getIdentitySnapshot(activeSpace.id),
+    getMerchantRules(activeSpace.id),
+    listInboundChannels(activeSpace.id),
   ]);
 
   const canEditSpace = activeSpace.role === 'owner' || activeSpace.role === 'admin';
@@ -82,6 +88,25 @@ export default async function SettingsPage() {
             Sin envio de correo o push todavia -- esto ajusta los avisos dentro de la app.
           </p>
           <AlertPreferencesForm spaceId={activeSpace.id} currentBillReminderDays={activeSpace.billReminderDays} canEdit={canEditSpace} />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-1 text-sm font-medium text-stone-200">Categorizacion Automatica</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Reglas por comercio: si la descripcion de una captura nueva coincide, se precargan categoria/cuenta/etiquetas/carpeta.
+          </p>
+          <MerchantRulesManager
+            spaceId={activeSpace.id}
+            rules={merchantRules}
+            categories={categories}
+            accounts={balances.accounts.map((a) => ({ accountId: a.accountId, name: a.name }))}
+            canManage={canEditSpace}
+          />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-3 text-sm font-medium text-stone-200">Bandeja Automatica</h2>
+          <InboundChannelsManager spaceId={activeSpace.id} channels={inboundChannels} canManage={canEditSpace} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
