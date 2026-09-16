@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getAccountBalances, getCategories, getIdentitySnapshot, getMySubscription, getTransactionHistory } from '@/actions/dashboard';
 import { getSpaceMembers } from '@/actions/settings';
 import { getMerchantRules } from '@/actions/merchant-rules';
@@ -83,6 +84,19 @@ export default async function SettingsPage() {
           <p className="mt-1 text-sm text-stone-500">
             Gestiona el nombre, los miembros y las cuentas de <span className="text-stone-300">{activeSpace.name}</span>.
           </p>
+        </div>
+
+        {/* En movil, la barra inferior solo tiene espacio para 4 destinos
+            (Panorama, Captura, Movimientos, Ajustes) -- Panorama Conjunto y
+            Privacidad quedan igual de alcanzables desde aqui, en vez de
+            perderse por completo al no estar en la barra fija. */}
+        <div className="flex flex-wrap gap-4 sm:hidden">
+          <Link href="/overview" className="text-sm font-medium text-emerald-400 hover:underline">
+            Panorama Conjunto →
+          </Link>
+          <Link href="/privacy" className="text-sm font-medium text-emerald-400 hover:underline">
+            Centro de Privacidad →
+          </Link>
         </div>
 
         {/* Protagonismo de "Asi te conozco": ya no es un boton escondido que

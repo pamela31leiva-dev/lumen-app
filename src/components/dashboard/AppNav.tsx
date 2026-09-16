@@ -7,15 +7,18 @@ import { cn } from '@/lib/utils';
 
 const NAV_LINKS = [
   { href: '/executive-board', label: 'Panorama', key: 'executive-board' as const },
+  { href: '/movimientos', label: 'Movimientos', key: 'movimientos' as const },
   { href: '/overview', label: 'Panorama Conjunto', key: 'overview' as const },
   { href: '/settings', label: 'Ajustes', key: 'settings' as const },
   { href: '/privacy', label: 'Privacidad', key: 'privacy' as const },
 ];
 
+export type AppNavPath = 'executive-board' | 'movimientos' | 'overview' | 'settings' | 'privacy';
+
 interface AppNavProps {
   spaces: SpaceSummary[];
   activeSpaceId: string;
-  activePath: 'executive-board' | 'overview' | 'settings' | 'privacy';
+  activePath: AppNavPath;
 }
 
 /** Encabezado compartido por /executive-board, /settings y /privacy. */

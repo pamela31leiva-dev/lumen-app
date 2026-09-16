@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import type { AppNavPath } from '@/components/dashboard/AppNav';
 
 const NAV_ITEMS = [
   {
@@ -15,17 +16,25 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/overview',
-    label: 'Global',
-    key: 'overview' as const,
+    // Ancla al mismo id="quick-capture" de CommandConsole (ver
+    // executive-board/page.tsx) -- no es una pagina nueva, es el atajo de
+    // una mano al input de captura, siempre arriba de esa pantalla. Nunca
+    // se marca "activo": es una accion, no un destino propio.
+    href: '/executive-board#quick-capture',
+    label: 'Captura',
+    key: 'captura' as const,
     icon: (
       <>
-        <rect x="3" y="3" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="14" y="3" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="3" y="14" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="14" y="14" width="7" height="7" rx="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8M8 12h8" />
       </>
     ),
+  },
+  {
+    href: '/movimientos',
+    label: 'Movimientos',
+    key: 'movimientos' as const,
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />,
   },
   {
     href: '/settings',
@@ -42,30 +51,27 @@ const NAV_ITEMS = [
       </>
     ),
   },
-  {
-    href: '/privacy',
-    label: 'Privacidad',
-    key: 'privacy' as const,
-    icon: (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 3 4 6v6c0 4.5 3.2 7.7 8 9 4.8-1.3 8-4.5 8-9V6l-8-3Z"
-      />
-    ),
-  },
 ];
 
 /**
- * Barra inferior fija de navegacion, solo en movil (sm:hidden). Reemplaza
- * los links de texto en el header, que en pantallas angostas desbordaban
- * horizontalmente junto con el selector de espacios y forzaban scroll
- * lateral. Patron estandar de app movil: 3 iconos + etiqueta, siempre
- * alcanzable con el pulgar, sin competir por espacio con nada mas.
+ * Barra inferior fija de navegacion, solo en movil (sm:hidden) -- las 4
+ * secciones de acceso con una sola mano: Panorama, Captura (atajo al
+ * input de CommandConsole), Movimientos, Ajustes. "Panorama Conjunto" y
+ * "Privacidad" siguen alcanzables desde Ajustes (ver enlaces al inicio de
+ * esa pagina) para no competir por espacio en la barra principal -- 4
+ * items es el maximo comodo para el pulgar sin que cada boton se vuelva
+ * angosto.
+ *
+ * pb-[env(safe-area-inset-bottom)] respeta la barra de gestos/home
+ * indicator de iPhones con notch -- sin esto, el ultimo renglon de iconos
+ * queda pegado (o parcialmente tapado) por esa franja del sistema.
  */
-export function MobileBottomNav({ activePath }: { activePath: 'executive-board' | 'overview' | 'settings' | 'privacy' }) {
+export function MobileBottomNav({ activePath }: { activePath: AppNavPath }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-elevated/95 backdrop-blur sm:hidden">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-elevated/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       {NAV_ITEMS.map((item) => {
         const isActive = activePath === item.key;
         return (
@@ -73,7 +79,7 @@ export function MobileBottomNav({ activePath }: { activePath: 'executive-board' 
             key={item.key}
             href={item.href}
             className={cn(
-              'flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition',
+              'flex min-h-[48px] flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] transition active:bg-white/5',
               isActive ? 'text-emerald-400' : 'text-stone-500 hover:text-stone-300',
             )}
           >

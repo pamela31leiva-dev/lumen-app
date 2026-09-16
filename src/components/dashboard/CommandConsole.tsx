@@ -409,7 +409,7 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
           disabled={isPending}
           title="Tomar una foto"
           aria-label="Tomar una foto"
-          className="flex shrink-0 items-center justify-center rounded-lg border border-white/10 p-2.5 text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
+          className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-white/10 p-2.5 text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
             <path
@@ -438,7 +438,7 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
           disabled={isPending}
           title="Subir imagen o PDF (comprobante, factura)"
           aria-label="Subir imagen o PDF"
-          className="flex shrink-0 items-center justify-center rounded-lg border border-white/10 p-2.5 text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
+          className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-white/10 p-2.5 text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
             <path
@@ -474,7 +474,7 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
               title={isListening ? 'Detener y enviar' : 'Dictar por voz'}
               aria-label={isListening ? 'Detener y enviar' : 'Dictar por voz'}
               className={cn(
-                'relative flex shrink-0 items-center justify-center rounded-lg border p-2.5 transition disabled:opacity-50',
+                'relative flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border p-2.5 transition disabled:opacity-50',
                 isListening
                   ? 'border-gold/50 bg-gold/10 text-gold'
                   : 'border-white/10 text-stone-400 hover:border-gold/30 hover:text-gold',

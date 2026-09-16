@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SessionModeGuard } from '@/components/auth/SessionModeGuard';
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 
 export const metadata: Metadata = {
   title: 'Lumen — Inteligencia Patrimonial',
@@ -22,6 +23,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#0B0F17',
+  // viewportFit=cover habilita env(safe-area-inset-*) en CSS -- sin esto, la
+  // barra inferior fija (MobileBottomNav) y otros elementos anclados al
+  // fondo quedan tapados por el home indicator en iPhones con notch.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         <SessionModeGuard />
+        <ServiceWorkerRegistration />
         {children}
       </body>
     </html>
