@@ -114,7 +114,7 @@ export async function markBillPaid(
 
   const { data: bill, error: billError } = await supabase
     .from('bills')
-    .select('description, amount, currency, status')
+    .select('description, amount, currency, status, receipt_id')
     .eq('id', billId)
     .eq('space_id', spaceId)
     .single();
@@ -138,6 +138,10 @@ export async function markBillPaid(
       status: 'pending_confirmation',
       description: bill.description,
       transaction_date: new Date().toISOString(),
+      // Si la factura vino de un XML UBL (0026), el pago queda vinculado al
+      // mismo receipt -- asi el movimiento conserva la trazabilidad del CUFE
+      // original (Bloque P5: certificado fiscal con CUFE por movimiento).
+      receipt_id: bill.receipt_id,
       created_by: user.id,
     })
     .select('id')
