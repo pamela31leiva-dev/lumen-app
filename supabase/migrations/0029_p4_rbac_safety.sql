@@ -36,6 +36,16 @@ begin
         return new;
     end if;
 
+    -- Si el espacio ya no existe, esta fila se esta borrando en CASCADA junto
+    -- con el (ej. deleteMyAccount borrando un espacio entero) -- no hay
+    -- "espacio sin propietario" que proteger porque el espacio completo esta
+    -- desapareciendo. Sin este chequeo, borrar cualquier espacio de un solo
+    -- owner (el caso normal para toda cuenta nueva) quedaria bloqueado por
+    -- error, rompiendo la eliminacion de cuenta.
+    if TG_OP = 'DELETE' and not exists (select 1 from public.spaces where id = old.space_id) then
+        return old;
+    end if;
+
     select count(*) into v_remaining_owners
     from public.space_members
     where space_id = old.space_id and role = 'owner' and id <> old.id;

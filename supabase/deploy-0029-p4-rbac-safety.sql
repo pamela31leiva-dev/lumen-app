@@ -21,6 +21,10 @@ begin
         return new;
     end if;
 
+    if TG_OP = 'DELETE' and not exists (select 1 from public.spaces where id = old.space_id) then
+        return old;
+    end if;
+
     select count(*) into v_remaining_owners
     from public.space_members
     where space_id = old.space_id and role = 'owner' and id <> old.id;
