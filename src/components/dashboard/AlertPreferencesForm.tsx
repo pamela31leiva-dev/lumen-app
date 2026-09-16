@@ -29,8 +29,8 @@ export function AlertPreferencesForm({ spaceId, currentBillReminderDays, canEdit
     setError(null);
     setSaved(false);
     const parsed = Number(days);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 30) {
-      setError('Escribe un numero entero entre 1 y 30.');
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 30) {
+      setError('Escribe un numero entero entre 0 (el mismo dia) y 30.');
       return;
     }
 
@@ -48,11 +48,11 @@ export function AlertPreferencesForm({ spaceId, currentBillReminderDays, canEdit
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <label className="text-xs font-medium text-stone-300">Avisar de una factura por vencer con cuantos dias de anticipacion</label>
+      <label className="text-xs font-medium text-stone-300">Avisar de una factura por vencer con cuantos dias de anticipacion (0 = el mismo dia)</label>
       <div className="flex items-center gap-2">
         <input
           type="number"
-          min={1}
+          min={0}
           max={30}
           value={days}
           disabled={!canEdit || isSaving}

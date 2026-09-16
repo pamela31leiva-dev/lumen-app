@@ -88,8 +88,8 @@ export async function updateAlertPreferences(
     return { success: false, error: 'No autorizado' };
   }
 
-  if (!Number.isInteger(billReminderDays) || billReminderDays < 1 || billReminderDays > 30) {
-    return { success: false, error: 'El umbral debe ser un numero entero entre 1 y 30 dias.' };
+  if (!Number.isInteger(billReminderDays) || billReminderDays < 0 || billReminderDays > 30) {
+    return { success: false, error: 'El umbral debe ser un numero entero entre 0 (el mismo dia) y 30 dias.' };
   }
 
   const { error } = await supabase.from('spaces').update({ bill_reminder_days: billReminderDays }).eq('id', spaceId);

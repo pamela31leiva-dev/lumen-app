@@ -4,6 +4,7 @@ import { getMerchantRules } from '@/actions/merchant-rules';
 import { listInboundChannels } from '@/actions/inbound-channels';
 import { getBudgets } from '@/actions/budgets';
 import { getCategoryFiscalTags } from '@/actions/fiscal';
+import { listNotificationChannels } from '@/actions/notification-channels';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -22,6 +23,7 @@ import { MerchantRulesManager } from '@/components/dashboard/MerchantRulesManage
 import { InboundChannelsManager } from '@/components/dashboard/InboundChannelsManager';
 import { BudgetsManager } from '@/components/dashboard/BudgetsManager';
 import { FiscalCategoriesManager } from '@/components/dashboard/FiscalCategoriesManager';
+import { NotificationChannelsManager } from '@/components/dashboard/NotificationChannelsManager';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -36,19 +38,31 @@ const PLAN_LABEL: Record<PlanTier, string> = {
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances, transactionHistory, subscription, categories, identitySnapshot, merchantRules, inboundChannels, budgets, fiscalTags] =
-    await Promise.all([
-      getSpaceMembers(activeSpace.id),
-      getAccountBalances(activeSpace.id),
-      getTransactionHistory(activeSpace.id),
-      getMySubscription(),
-      getCategories(activeSpace.id),
-      getIdentitySnapshot(activeSpace.id),
-      getMerchantRules(activeSpace.id),
-      listInboundChannels(activeSpace.id),
-      getBudgets(activeSpace.id),
-      getCategoryFiscalTags(activeSpace.id),
-    ]);
+  const [
+    members,
+    balances,
+    transactionHistory,
+    subscription,
+    categories,
+    identitySnapshot,
+    merchantRules,
+    inboundChannels,
+    budgets,
+    fiscalTags,
+    notificationChannels,
+  ] = await Promise.all([
+    getSpaceMembers(activeSpace.id),
+    getAccountBalances(activeSpace.id),
+    getTransactionHistory(activeSpace.id),
+    getMySubscription(),
+    getCategories(activeSpace.id),
+    getIdentitySnapshot(activeSpace.id),
+    getMerchantRules(activeSpace.id),
+    listInboundChannels(activeSpace.id),
+    getBudgets(activeSpace.id),
+    getCategoryFiscalTags(activeSpace.id),
+    listNotificationChannels(activeSpace.id),
+  ]);
 
   // RBAC (Bloque P4): mismo umbral que las politicas RLS (has_space_role) --
   // canEdit = owner/admin/editor (crear/editar datos), canManage = owner/admin
@@ -97,9 +111,20 @@ export default async function SettingsPage() {
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-1 text-sm font-medium text-stone-200">Preferencias de Alertas</h2>
           <p className="mb-3 text-xs text-stone-500">
-            Sin envio de correo o push todavia -- esto ajusta los avisos dentro de la app.
+            Con cuanta anticipacion avisar de una factura por vencer -- dentro de la app siempre, y por los canales de
+            abajo si tienes alguno activo.
           </p>
           <AlertPreferencesForm spaceId={activeSpace.id} currentBillReminderDays={activeSpace.billReminderDays} canEdit={canManage} />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-1 text-sm font-medium text-stone-200">Canales de Notificacion</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Webhook (Slack, Discord, Zapier, tu servidor) o tu propio bot de Telegram -- Lumen te avisa ahi ademas de
+            dentro de la app cuando una factura entra en su ventana de aviso. Solo owner/admin pueden verlos o
+            cambiarlos, porque guardan una credencial en claro.
+          </p>
+          <NotificationChannelsManager spaceId={activeSpace.id} channels={notificationChannels} canManage={canManage} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
