@@ -4,6 +4,7 @@ import { getUserSpaces } from '@/actions/dashboard';
 import { getExecutiveBoardSnapshot } from '@/actions/snapshot';
 import { getFailedCaptures } from '@/actions/ingestion';
 import { getFinancialHistory } from '@/actions/analytics-history';
+import { getFiscalSummary } from '@/actions/fiscal';
 import { computeFinancialKpis, resampleQuarterly } from '@/domain/analytics/kpis';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
@@ -27,6 +28,7 @@ import { AnomalyAuditCard } from '@/components/dashboard/AnomalyAuditCard';
 import { FinancialKpisCard } from '@/components/dashboard/FinancialKpisCard';
 import { FinancialHistoryCard } from '@/components/dashboard/FinancialHistoryCard';
 import { MonthlyReportModal } from '@/components/dashboard/MonthlyReportModal';
+import { FiscalSummaryCard } from '@/components/dashboard/FiscalSummaryCard';
 
 /**
  * Executive Action Board — reemplaza el "dashboard" tradicional. Tres
@@ -104,9 +106,10 @@ export default async function ExecutiveBoardPage() {
   // Historia Financiera (0028): tampoco vive en el snapshot atomico -- cambia
   // con frecuencia distinta (mes a mes, no en cada captura) y no todas las
   // pantallas la necesitan. Se piden ambas en paralelo.
-  const [failedCaptures, financialHistory] = await Promise.all([
+  const [failedCaptures, financialHistory, fiscalSummary] = await Promise.all([
     getFailedCaptures(activeSpace.id),
     getFinancialHistory(activeSpace.id),
+    getFiscalSummary(activeSpace.id),
   ]);
   const financialKpis = computeFinancialKpis(financialHistory);
   const financialHistoryQuarterly = resampleQuarterly(financialHistory);
@@ -154,6 +157,12 @@ export default async function ExecutiveBoardPage() {
             <FinancialHistoryCard monthly={financialHistory} quarterly={financialHistoryQuarterly} baseCurrency={balances.baseCurrency} />
           </>
         )}
+
+        {/* Resumen Fiscal (Bloque P5, Colombia): suma lo que la persona ya
+            clasifico como gravado/exento/deducible -- nunca calcula impuesto.
+            Siempre visible (no depende de "Patrimonio Neto" real) porque
+            aplica igual a un espacio que recien empieza a registrar ingresos. */}
+        <FiscalSummaryCard spaceId={activeSpace.id} baseCurrency={balances.baseCurrency} initialSummary={fiscalSummary} />
 
         {/* Radiografia Proporcional: entendimiento en 3 segundos -- barra
             segmentada por carpeta + mapa de calor semanal, en vez de exigir

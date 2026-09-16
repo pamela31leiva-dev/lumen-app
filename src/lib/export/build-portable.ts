@@ -31,14 +31,17 @@ function toCsv(headers: string[], rows: (string | number | boolean | null)[][]):
 
 export function buildTransactionsCsv(dataset: ExportDataset): string {
   return toCsv(
-    ['Fecha', 'Tipo', 'Categoria', 'Cuenta', 'Descripcion', `Monto (${dataset.baseCurrency})`],
+    ['Fecha', 'Tipo', 'Categoria', 'Clasificacion Fiscal', 'Cuenta', 'Descripcion', `Monto (${dataset.baseCurrency})`, `Retencion (${dataset.baseCurrency})`, 'CUFE'],
     dataset.transactions.map((t) => [
       t.transactionDate.slice(0, 10),
       t.type,
       t.categoryName ?? '',
+      t.taxTreatment ?? '',
       t.accountName ?? '',
       t.description ?? '',
       t.amountBase,
+      t.withholdingTaxAmount ?? '',
+      t.cufe ?? '',
     ]),
   );
 }

@@ -3,6 +3,7 @@ import { getSpaceMembers } from '@/actions/settings';
 import { getMerchantRules } from '@/actions/merchant-rules';
 import { listInboundChannels } from '@/actions/inbound-channels';
 import { getBudgets } from '@/actions/budgets';
+import { getCategoryFiscalTags } from '@/actions/fiscal';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -20,6 +21,7 @@ import { AlertPreferencesForm } from '@/components/dashboard/AlertPreferencesFor
 import { MerchantRulesManager } from '@/components/dashboard/MerchantRulesManager';
 import { InboundChannelsManager } from '@/components/dashboard/InboundChannelsManager';
 import { BudgetsManager } from '@/components/dashboard/BudgetsManager';
+import { FiscalCategoriesManager } from '@/components/dashboard/FiscalCategoriesManager';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -34,17 +36,19 @@ const PLAN_LABEL: Record<PlanTier, string> = {
 export default async function SettingsPage() {
   const { spaces, activeSpace } = await requireActiveSpace();
 
-  const [members, balances, transactionHistory, subscription, categories, identitySnapshot, merchantRules, inboundChannels, budgets] = await Promise.all([
-    getSpaceMembers(activeSpace.id),
-    getAccountBalances(activeSpace.id),
-    getTransactionHistory(activeSpace.id),
-    getMySubscription(),
-    getCategories(activeSpace.id),
-    getIdentitySnapshot(activeSpace.id),
-    getMerchantRules(activeSpace.id),
-    listInboundChannels(activeSpace.id),
-    getBudgets(activeSpace.id),
-  ]);
+  const [members, balances, transactionHistory, subscription, categories, identitySnapshot, merchantRules, inboundChannels, budgets, fiscalTags] =
+    await Promise.all([
+      getSpaceMembers(activeSpace.id),
+      getAccountBalances(activeSpace.id),
+      getTransactionHistory(activeSpace.id),
+      getMySubscription(),
+      getCategories(activeSpace.id),
+      getIdentitySnapshot(activeSpace.id),
+      getMerchantRules(activeSpace.id),
+      listInboundChannels(activeSpace.id),
+      getBudgets(activeSpace.id),
+      getCategoryFiscalTags(activeSpace.id),
+    ]);
 
   // RBAC (Bloque P4): mismo umbral que las politicas RLS (has_space_role) --
   // canEdit = owner/admin/editor (crear/editar datos), canManage = owner/admin
@@ -131,6 +135,15 @@ export default async function SettingsPage() {
             canEdit={canEdit}
             canManage={canManage}
           />
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-1 text-sm font-medium text-stone-200">Clasificacion Tributaria</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Marca cada categoria como gravado/exento/no gravado (ingresos) o deducible/no deducible (gastos) -- tu lo
+            sabes, Lumen solo suma. Alimenta el Resumen Fiscal del Panorama y el Paquete Contable exportable.
+          </p>
+          <FiscalCategoriesManager spaceId={activeSpace.id} categories={categories} tags={fiscalTags} canEdit={canEdit} canManage={canManage} />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">

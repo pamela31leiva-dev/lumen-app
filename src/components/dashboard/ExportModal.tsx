@@ -9,7 +9,7 @@ interface ExportModalProps {
 }
 
 type PeriodPreset = 'this_month' | 'last_3_months' | 'this_year' | 'all';
-type ExportFormat = 'xlsx' | 'csv' | 'json';
+type ExportFormat = 'xlsx' | 'csv' | 'json' | 'fiscal_pdf';
 
 const PERIOD_OPTIONS: { value: PeriodPreset; label: string }[] = [
   { value: 'this_month', label: 'Este mes' },
@@ -22,6 +22,7 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string; hint: string }[] = [
   { value: 'xlsx', label: 'Excel', hint: 'Reportes con formulas' },
   { value: 'csv', label: 'CSV', hint: 'Un archivo por tabla' },
   { value: 'json', label: 'JSON', hint: 'Estructurado, para otras apps' },
+  { value: 'fiscal_pdf', label: 'Certificado PDF', hint: 'Resumen fiscal + CUFE' },
 ];
 
 function resolvePeriod(preset: PeriodPreset): { start: Date; end: Date } {
@@ -80,6 +81,14 @@ export function ExportModal({ spaceId }: ExportModalProps) {
         ]);
         const workbook = buildExportWorkbook(dataset);
         XLSX.writeFile(workbook, exportFileName(dataset));
+      } else if (format === 'fiscal_pdf') {
+        if (dataset.transactions.length === 0) {
+          setError('No hay movimientos confirmados en ese periodo.');
+          return;
+        }
+        const { buildFiscalCertificatePdf, fiscalCertificateFileName } = await import('@/lib/export/build-fiscal-pdf');
+        const doc = buildFiscalCertificatePdf(dataset);
+        doc.save(fiscalCertificateFileName(dataset));
       } else if (format === 'csv') {
         const { downloadCsvExport } = await import('@/lib/export/build-portable');
         downloadCsvExport(dataset);
@@ -111,9 +120,12 @@ export function ExportModal({ spaceId }: ExportModalProps) {
           <div className="w-full max-w-sm rounded-xl border border-white/10 bg-elevated p-6 shadow-xl">
             <h2 className="text-base font-medium text-stone-100">Exportar reporte</h2>
             <p className="mt-1 text-xs text-stone-500">
-              {format === 'xlsx'
-                ? 'Genera un Excel con Flujo de Caja, Balance por Categorias y Estado de Resultados de los movimientos confirmados en el periodo elegido.'
-                : 'Descarga tus movimientos, cuentas y facturas tal cual viven en Lumen -- Portabilidad de Datos, sin encerrarte en un solo formato.'}
+              {format === 'xlsx' &&
+                'Genera un Excel con Flujo de Caja, Balance por Categorias, Estado de Resultados y Resumen Fiscal de los movimientos confirmados en el periodo elegido.'}
+              {format === 'fiscal_pdf' &&
+                'Certificado en PDF: resumen de lo que ya clasificaste como gravado/exento/deducible, retenciones declaradas, y la lista de facturas electronicas con su CUFE -- para tu contador o como respaldo. No es una declaracion tributaria.'}
+              {(format === 'csv' || format === 'json') &&
+                'Descarga tus movimientos, cuentas y facturas tal cual viven en Lumen -- Portabilidad de Datos, sin encerrarte en un solo formato.'}
             </p>
 
             <div className="mt-4">
@@ -128,7 +140,7 @@ export function ExportModal({ spaceId }: ExportModalProps) {
                 onChange={(value) => setPeriod(value as PeriodPreset)}
                 options={PERIOD_OPTIONS}
               />
-              {format !== 'xlsx' && (
+              {(format === 'csv' || format === 'json') && (
                 <p className="mt-1 text-[11px] text-stone-600">Cuentas y facturas se incluyen completas -- el periodo solo filtra movimientos.</p>
               )}
             </div>
@@ -150,7 +162,7 @@ export function ExportModal({ spaceId }: ExportModalProps) {
                 disabled={isExporting}
                 className="rounded-lg bg-wealth px-4 py-2 text-sm font-medium text-white transition hover:bg-wealth-hover disabled:opacity-60"
               >
-                {isExporting ? 'Generando...' : `Descargar .${format}`}
+                {isExporting ? 'Generando...' : `Descargar .${format === 'fiscal_pdf' ? 'pdf' : format}`}
               </button>
             </div>
           </div>

@@ -150,6 +150,8 @@ export interface ConfirmTransactionDTO {
   tags?: string[];
   is_business?: boolean;
   life_domain?: 'personal' | 'familiar' | 'salud' | null;
+  /** Retencion en la fuente que el pagador practico sobre este movimiento (Bloque P5, opcional -- la declara la persona, nunca se calcula). */
+  withholding_tax_amount?: number | null;
 }
 
 export type ConfirmTransactionResult =

@@ -11,6 +11,12 @@ export interface ExportTransactionRow {
   description: string | null;
   /** Monto en la moneda base del espacio (columna generada `amount_base`) -- nunca calculado por IA. */
   amountBase: number;
+  /** Clasificacion fiscal de la categoria en ESTE espacio (Bloque P5) -- null si no se ha clasificado. */
+  taxTreatment: string | null;
+  /** Retencion en la fuente declarada sobre este movimiento (Bloque P5) -- null si no aplica o no se declaro. */
+  withholdingTaxAmount: number | null;
+  /** CUFE de la factura XML que origino este movimiento, si la tiene (0026) -- trazabilidad para el contador. */
+  cufe: string | null;
 }
 
 export interface ExportAccountRow {
@@ -68,7 +74,7 @@ export async function getExportDataset(
     return { error: 'No autorizado' };
   }
 
-  // Las 5 consultas son independientes entre si -- un solo round-trip
+  // Las 6 consultas son independientes entre si -- un solo round-trip
   // paralelo en vez de "espacio" primero, luego 3 mas, luego el saldo
   // inicial al final (asi estaba antes: 3 vueltas secuenciales).
   const [
@@ -77,12 +83,13 @@ export async function getExportDataset(
     { data: accountRows, error: accountsError },
     { data: billRows, error: billsError },
     { data: openingBalances },
+    { data: fiscalTagRows },
   ] = await Promise.all([
     supabase.from('spaces').select('name, base_currency').eq('id', spaceId).single(),
     supabase
       .from('transactions')
       .select(
-        'type, description, transaction_date, amount_base, category:categories(name, kind), account:accounts!transactions_account_id_fkey(name)',
+        'type, description, transaction_date, amount_base, withholding_tax_amount, category_id, category:categories(name, kind), account:accounts!transactions_account_id_fkey(name), receipt:receipts(cufe)',
       )
       .eq('space_id', spaceId)
       .eq('status', 'confirmed')
@@ -95,8 +102,11 @@ export async function getExportDataset(
           description: string | null;
           transaction_date: string;
           amount_base: number;
+          withholding_tax_amount: number | null;
+          category_id: string | null;
           category: { name: string; kind: 'income' | 'expense' } | null;
           account: { name: string } | null;
+          receipt: { cufe: string | null } | null;
         }[]
       >(),
     supabase
@@ -110,6 +120,7 @@ export async function getExportDataset(
       .eq('space_id', spaceId)
       .order('due_date', { ascending: true }),
     supabase.from('accounts').select('name, opening_balance').eq('space_id', spaceId),
+    supabase.from('category_fiscal_tags').select('category_id, tax_treatment').eq('space_id', spaceId),
   ]);
 
   if (spaceError || !space) {
@@ -123,6 +134,7 @@ export async function getExportDataset(
   if (billsError) console.error('Error al leer facturas para exportacion:', billsError);
 
   const openingByName = new Map((openingBalances ?? []).map((a) => [a.name, Number(a.opening_balance)]));
+  const taxTreatmentByCategoryId = new Map((fiscalTagRows ?? []).map((row) => [row.category_id, row.tax_treatment]));
 
   return {
     spaceName: space.name,
@@ -137,6 +149,9 @@ export async function getExportDataset(
       accountName: row.account?.name ?? null,
       description: row.description,
       amountBase: Number(row.amount_base),
+      taxTreatment: row.category_id ? (taxTreatmentByCategoryId.get(row.category_id) ?? null) : null,
+      withholdingTaxAmount: row.withholding_tax_amount !== null ? Number(row.withholding_tax_amount) : null,
+      cufe: row.receipt?.cufe ?? null,
     })),
     accounts: (accountRows ?? []).map((row) => ({
       name: row.account_name,

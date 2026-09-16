@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { ExportDataset, ExportTransactionRow } from '@/actions/export';
+import { TAX_TREATMENT_LABEL, type TaxTreatment } from '@/domain/types/fiscal';
 
 const TYPE_LABEL: Record<ExportTransactionRow['type'], string> = {
   income: 'Ingreso',
@@ -52,17 +53,23 @@ export function buildExportWorkbook(dataset: ExportDataset): XLSX.WorkBook {
     Fecha: formatDateOnly(t.transactionDate),
     Tipo: TYPE_LABEL[t.type],
     Categoria: t.categoryName ?? '(Sin categoria)',
+    'Clasificacion Fiscal': t.taxTreatment ? (TAX_TREATMENT_LABEL[t.taxTreatment as TaxTreatment] ?? t.taxTreatment) : '',
     Cuenta: t.accountName ?? '(Sin cuenta)',
     Descripcion: t.description ?? '',
     [`Monto (${dataset.baseCurrency})`]: t.type === 'expense' ? -t.amountBase : t.type === 'income' ? t.amountBase : 0,
+    [`Retencion (${dataset.baseCurrency})`]: t.withholdingTaxAmount ?? '',
+    CUFE: t.cufe ?? '',
   }));
   flujoRows.push({
     Fecha: '',
     Tipo: '',
     Categoria: '',
+    'Clasificacion Fiscal': '',
     Cuenta: '',
     Descripcion: 'Flujo neto del periodo',
     [`Monto (${dataset.baseCurrency})`]: totalIncome - totalExpense,
+    [`Retencion (${dataset.baseCurrency})`]: '',
+    CUFE: '',
   });
   const flujoSheet = XLSX.utils.json_to_sheet(flujoRows);
   XLSX.utils.book_append_sheet(workbook, flujoSheet, 'Flujo de Caja');
@@ -89,6 +96,33 @@ export function buildExportWorkbook(dataset: ExportDataset): XLSX.WorkBook {
   ];
   const resultadosSheet = XLSX.utils.json_to_sheet(resultadosRows);
   XLSX.utils.book_append_sheet(workbook, resultadosSheet, 'Estado de Resultados');
+
+  // Resumen Fiscal (Bloque P5): suma por tratamiento fiscal YA declarado
+  // (Ajustes > Clasificacion Tributaria) -- nunca calcula impuesto, solo
+  // agrupa lo que la persona ya clasifico. "Sin clasificar" queda visible a
+  // proposito: un consolidado incompleto no deberia verse igual de limpio
+  // que uno completo.
+  const fiscalTotals = new Map<string, number>();
+  let withholdingTotal = 0;
+  for (const t of transactions) {
+    if (t.type === 'transfer') continue;
+    const key = t.taxTreatment ?? (t.type === 'income' ? 'income_sin_clasificar' : 'expense_sin_clasificar');
+    fiscalTotals.set(key, (fiscalTotals.get(key) ?? 0) + t.amountBase);
+    withholdingTotal += t.withholdingTaxAmount ?? 0;
+  }
+  const fiscalLabel: Record<string, string> = {
+    ...TAX_TREATMENT_LABEL,
+    income_sin_clasificar: 'Ingresos sin clasificar',
+    expense_sin_clasificar: 'Gastos sin clasificar',
+  };
+  const fiscalAmountKey = `Total (${dataset.baseCurrency})`;
+  const fiscalRows: Record<string, string | number>[] = Array.from(fiscalTotals.entries())
+    .filter(([, total]) => total !== 0)
+    .map(([key, total]) => ({ Rubro: fiscalLabel[key] ?? key, [fiscalAmountKey]: total }));
+  fiscalRows.push({ Rubro: '', [fiscalAmountKey]: '' });
+  fiscalRows.push({ Rubro: 'Retenciones en la fuente declaradas', [fiscalAmountKey]: withholdingTotal });
+  const fiscalSheet = XLSX.utils.json_to_sheet(fiscalRows);
+  XLSX.utils.book_append_sheet(workbook, fiscalSheet, 'Resumen Fiscal');
 
   return workbook;
 }
