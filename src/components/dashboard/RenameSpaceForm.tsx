@@ -20,13 +20,18 @@ export function RenameSpaceForm({ spaceId, currentName, canEdit }: RenameSpaceFo
   function handleSave() {
     setFeedback(null);
     startTransition(async () => {
-      const result = await renameSpace(spaceId, name);
-      if (!result.success) {
-        setFeedback({ kind: 'error', message: result.error });
-        return;
+      try {
+        const result = await renameSpace(spaceId, name);
+        if (!result.success) {
+          setFeedback({ kind: 'error', message: result.error });
+          return;
+        }
+        setFeedback({ kind: 'success', message: 'Nombre actualizado.' });
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al renombrar el espacio:', err);
+        setFeedback({ kind: 'error', message: 'Se perdio la conexion antes de guardar. Intenta de nuevo.' });
       }
-      setFeedback({ kind: 'success', message: 'Nombre actualizado.' });
-      router.refresh();
     });
   }
 

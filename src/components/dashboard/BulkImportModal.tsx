@@ -138,6 +138,11 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
       } else {
         setDuplicateCheck(result);
       }
+    } catch (err) {
+      // No bloquea el flujo: si la comprobacion de duplicados falla por red,
+      // se sigue a la vista previa sin esa advertencia en vez de dejar al
+      // usuario atascado antes de poder importar.
+      console.error('Error de red al comprobar duplicados:', err);
     } finally {
       setIsCheckingDuplicates(false);
     }
@@ -148,23 +153,28 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
     setError(null);
     const skipRowIndexes = skipDuplicates ? (duplicateCheck?.duplicateRowIndexes ?? []) : [];
     startTransition(async () => {
-      const result = await processBulkImport(
-        spaceId,
-        rawRows,
-        mapping,
-        { name: fileName, hash: fileHash, sizeBytes: fileSizeBytes },
-        skipRowIndexes,
-      );
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await processBulkImport(
+          spaceId,
+          rawRows,
+          mapping,
+          { name: fileName, hash: fileHash, sizeBytes: fileSizeBytes },
+          skipRowIndexes,
+        );
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setSuccessMessage(
+          `Se importaron ${result.importedCount} movimientos a "Por confirmar"${
+            result.skippedCount > 0 ? ` (se omitieron ${result.skippedCount} filas con datos incompletos)` : ''
+          }${result.duplicateCount > 0 ? ` (se omitieron ${result.duplicateCount} duplicados)` : ''}.`,
+        );
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al importar el archivo:', err);
+        setError('Se perdio la conexion antes de terminar la importacion. Revisa el historial antes de reintentar, para no duplicar filas.');
       }
-      setSuccessMessage(
-        `Se importaron ${result.importedCount} movimientos a "Por confirmar"${
-          result.skippedCount > 0 ? ` (se omitieron ${result.skippedCount} filas con datos incompletos)` : ''
-        }${result.duplicateCount > 0 ? ` (se omitieron ${result.duplicateCount} duplicados)` : ''}.`,
-      );
-      router.refresh();
     });
   }
 

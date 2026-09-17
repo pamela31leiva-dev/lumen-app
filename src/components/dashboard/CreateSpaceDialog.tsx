@@ -45,15 +45,20 @@ export function CreateSpaceDialog({
       return;
     }
     startTransition(async () => {
-      const result = await createSpace(trimmed, type);
-      if (!result.success) {
-        setFormError(result.error);
-        return;
+      try {
+        const result = await createSpace(trimmed, type);
+        if (!result.success) {
+          setFormError(result.error);
+          return;
+        }
+        setDialogOpen(false);
+        setName('');
+        setType('personal');
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al crear el espacio:', err);
+        setFormError('Se perdio la conexion antes de crear el espacio. Intenta de nuevo.');
       }
-      setDialogOpen(false);
-      setName('');
-      setType('personal');
-      router.refresh();
     });
   }
 

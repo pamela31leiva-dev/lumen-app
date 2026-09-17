@@ -25,18 +25,23 @@ export function PrivacyCenterPanel() {
   function handleExport() {
     setError(null);
     startTransition(async () => {
-      const result = await exportUserData();
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await exportUserData();
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `mis-datos-${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Error de red al exportar los datos:', err);
+        setError('Se perdio la conexion antes de generar el archivo. Intenta de nuevo.');
       }
-      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `mis-datos-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
     });
   }
 

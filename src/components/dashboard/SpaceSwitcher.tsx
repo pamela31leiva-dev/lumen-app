@@ -36,8 +36,15 @@ export function SpaceSwitcher({ spaces, activeSpaceId }: SpaceSwitcherProps) {
     setOpen(false);
     if (spaceId === activeSpace?.id) return;
     startTransition(async () => {
-      await setActiveSpace(spaceId);
-      router.refresh();
+      try {
+        await setActiveSpace(spaceId);
+        router.refresh();
+      } catch (err) {
+        // Bajo riesgo (solo cambia una cookie): sin estado de error visible
+        // aqui, pero se registra para diagnostico -- si falla, el header
+        // simplemente no cambia de espacio, la persona lo nota e intenta de nuevo.
+        console.error('Error de red al cambiar de espacio:', err);
+      }
     });
   }
 

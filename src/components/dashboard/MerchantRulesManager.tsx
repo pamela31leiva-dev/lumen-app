@@ -66,14 +66,19 @@ function RuleForm({
     };
 
     startTransition(async () => {
-      const result = initial.id
-        ? await updateMerchantRule(spaceId, initial.id, { ...input, isActive: active })
-        : await createMerchantRule(spaceId, input);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = initial.id
+          ? await updateMerchantRule(spaceId, initial.id, { ...input, isActive: active })
+          : await createMerchantRule(spaceId, input);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        onDone();
+      } catch (err) {
+        console.error('Error de red al guardar la regla:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      onDone();
     });
   }
 
@@ -181,14 +186,20 @@ export function MerchantRulesManager({ spaceId, rules, categories, accounts, can
   function handleDelete(ruleId: string) {
     setError(null);
     setDeletingId(ruleId);
-    deleteMerchantRule(spaceId, ruleId).then((result) => {
-      setDeletingId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    deleteMerchantRule(spaceId, ruleId)
+      .then((result) => {
+        setDeletingId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al eliminar la regla:', err);
+        setDeletingId(null);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
+      });
   }
 
   return (

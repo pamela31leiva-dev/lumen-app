@@ -68,34 +68,45 @@ export function AlternativeAssetsManager({ spaceId, assets, totalBase, baseCurre
     const parsedUnitValue = Number(unitValue);
 
     startTransition(async () => {
-      const result = await createAlternativeAsset(spaceId, {
-        name,
-        assetType,
-        currency,
-        quantity: parsedQuantity,
-        unitValue: parsedUnitValue,
-        notes,
-      });
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createAlternativeAsset(spaceId, {
+          name,
+          assetType,
+          currency,
+          quantity: parsedQuantity,
+          unitValue: parsedUnitValue,
+          notes,
+        });
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        resetForm();
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al guardar el activo:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      resetForm();
-      router.refresh();
     });
   }
 
   function handleDelete(assetId: string) {
     setError(null);
     setDeletingId(assetId);
-    deleteAlternativeAsset(assetId, spaceId).then((result) => {
-      setDeletingId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    deleteAlternativeAsset(assetId, spaceId)
+      .then((result) => {
+        setDeletingId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al eliminar el activo:', err);
+        setDeletingId(null);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
+      });
   }
 
   return (

@@ -59,50 +59,73 @@ export function NotificationChannelsManager({ spaceId, channels, canManage }: No
     setError(null);
     const config: Record<string, string> = channelType === 'webhook' ? { url } : { bot_token: botToken, chat_id: chatId };
     startTransition(async () => {
-      const result = await createNotificationChannel(spaceId, channelType, config);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createNotificationChannel(spaceId, channelType, config);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        resetForm();
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al crear el canal:', err);
+        setError('Se perdio la conexion antes de crear el canal. Intenta de nuevo.');
       }
-      resetForm();
-      router.refresh();
     });
   }
 
   function handleToggle(channel: NotificationChannelSummary) {
     setError(null);
     setBusyId(channel.id);
-    toggleNotificationChannel(spaceId, channel.id, !channel.isActive).then((result) => {
-      setBusyId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    toggleNotificationChannel(spaceId, channel.id, !channel.isActive)
+      .then((result) => {
+        setBusyId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al cambiar el estado del canal:', err);
+        setBusyId(null);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
+      });
   }
 
   function handleDelete(channelId: string) {
     setError(null);
     setBusyId(channelId);
-    deleteNotificationChannel(spaceId, channelId).then((result) => {
-      setBusyId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    deleteNotificationChannel(spaceId, channelId)
+      .then((result) => {
+        setBusyId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al eliminar el canal:', err);
+        setBusyId(null);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
+      });
   }
 
   function handleTest(channelId: string) {
     setError(null);
     setTestMessage(null);
     setBusyId(channelId);
-    sendTestNotification(spaceId, channelId).then((result) => {
-      setBusyId(null);
-      setTestMessage({ id: channelId, text: result.success ? 'Enviado -- revisa el canal.' : result.error });
-    });
+    sendTestNotification(spaceId, channelId)
+      .then((result) => {
+        setBusyId(null);
+        setTestMessage({ id: channelId, text: result.success ? 'Enviado -- revisa el canal.' : result.error });
+      })
+      .catch((err) => {
+        console.error('Error de red al enviar la prueba:', err);
+        setBusyId(null);
+        setTestMessage({ id: channelId, text: 'Se perdio la conexion antes de enviar. Intenta de nuevo.' });
+      });
   }
 
   return (

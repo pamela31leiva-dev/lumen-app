@@ -68,40 +68,59 @@ export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes, 
     }
 
     startTransition(async () => {
-      const result = await createRecurringIncome(
-        spaceId,
-        description.trim(),
-        parsedAmount,
-        baseCurrency,
-        folder,
-        parsedPercent,
-        Number(adjustmentMonth),
-      );
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createRecurringIncome(
+          spaceId,
+          description.trim(),
+          parsedAmount,
+          baseCurrency,
+          folder,
+          parsedPercent,
+          Number(adjustmentMonth),
+        );
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        resetForm();
+        setShowForm(false);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al crear el ingreso recurrente:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      resetForm();
-      setShowForm(false);
-      router.refresh();
     });
   }
 
   function handleToggleActive(income: RecurringIncomeSummary) {
+    setError(null);
     setBusyId(income.id);
     startTransition(async () => {
-      await toggleRecurringIncomeActive(spaceId, income.id, !income.isActive);
-      setBusyId(null);
-      router.refresh();
+      try {
+        await toggleRecurringIncomeActive(spaceId, income.id, !income.isActive);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al pausar/reactivar el ingreso recurrente:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
+      } finally {
+        setBusyId(null);
+      }
     });
   }
 
   function handleDelete(income: RecurringIncomeSummary) {
+    setError(null);
     setBusyId(income.id);
     startTransition(async () => {
-      await deleteRecurringIncome(spaceId, income.id);
-      setBusyId(null);
-      router.refresh();
+      try {
+        await deleteRecurringIncome(spaceId, income.id);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al eliminar el ingreso recurrente:', err);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
+      } finally {
+        setBusyId(null);
+      }
     });
   }
 

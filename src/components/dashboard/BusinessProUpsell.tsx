@@ -28,12 +28,17 @@ export function BusinessProUpsell({ spaceId, canManage }: BusinessProUpsellProps
   function handleActivate() {
     setError(null);
     startTransition(async () => {
-      const result = await activateProSimulation(spaceId);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await activateProSimulation(spaceId);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al activar Pro:', err);
+        setError('Se perdio la conexion antes de activar. Intenta de nuevo.');
       }
-      router.refresh();
     });
   }
 

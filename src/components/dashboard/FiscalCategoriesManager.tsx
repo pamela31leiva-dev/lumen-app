@@ -55,20 +55,26 @@ export function FiscalCategoriesManager({ spaceId, spaceType, categories, tags, 
     setStandardAppliedMessage(null);
     setPendingCategoryId(categoryId);
     startTransition(async () => {
-      const existingTag = tagByCategory.get(categoryId);
-      const result =
-        value === NONE_VALUE
-          ? existingTag
-            ? await deleteCategoryFiscalTag(spaceId, existingTag.id)
-            : { success: true as const }
-          : await setCategoryFiscalTag(spaceId, categoryId, value as TaxTreatment);
+      try {
+        const existingTag = tagByCategory.get(categoryId);
+        const result =
+          value === NONE_VALUE
+            ? existingTag
+              ? await deleteCategoryFiscalTag(spaceId, existingTag.id)
+              : { success: true as const }
+            : await setCategoryFiscalTag(spaceId, categoryId, value as TaxTreatment);
 
-      setPendingCategoryId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
+        setPendingCategoryId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al cambiar la clasificacion fiscal:', err);
+        setPendingCategoryId(null);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      router.refresh();
     });
   }
 
@@ -76,19 +82,25 @@ export function FiscalCategoriesManager({ spaceId, spaceType, categories, tags, 
     setError(null);
     setStandardAppliedMessage(null);
     setIsApplyingStandard(true);
-    applyStandardFiscalTags(spaceId).then((result) => {
-      setIsApplyingStandard(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      setStandardAppliedMessage(
-        result.appliedCount === 0
-          ? 'Ya todas tus categorias estaban clasificadas -- nada que aplicar.'
-          : `Se clasificaron ${result.appliedCount} categoria${result.appliedCount === 1 ? '' : 's'} sin tocar las que ya habias elegido tu.`,
-      );
-      router.refresh();
-    });
+    applyStandardFiscalTags(spaceId)
+      .then((result) => {
+        setIsApplyingStandard(false);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setStandardAppliedMessage(
+          result.appliedCount === 0
+            ? 'Ya todas tus categorias estaban clasificadas -- nada que aplicar.'
+            : `Se clasificaron ${result.appliedCount} categoria${result.appliedCount === 1 ? '' : 's'} sin tocar las que ya habias elegido tu.`,
+        );
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al aplicar las sugerencias estandar:', err);
+        setIsApplyingStandard(false);
+        setError('Se perdio la conexion antes de aplicar las sugerencias. Intenta de nuevo.');
+      });
   }
 
   function optionsFor(treatments: TaxTreatment[], categoryId: string) {

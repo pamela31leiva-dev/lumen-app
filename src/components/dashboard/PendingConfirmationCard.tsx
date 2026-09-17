@@ -119,57 +119,67 @@ export function PendingConfirmationCard({
     setOptimisticOutcome({ kind: 'confirm', message: pickConfirmationPhrase(type) });
 
     startTransition(async () => {
-      const result = await confirmTransaction({
-        transaction_id: transaction.id,
-        space_id: spaceId,
-        type,
-        account_id: accountId || '',
-        destination_account_id: type === 'transfer' ? destinationAccountId : null,
-        category_id: finalCategoryId,
-        amount_original: parsedAmount,
-        currency_original: currency,
-        exchange_rate: Number(exchangeRate) || 1,
-        description: description || null,
-        transaction_date: transactionIso,
-        receipt_id: transaction.receiptId,
-        tags: tagsInput
-          .split(',')
-          .map((t) => t.trim().toLowerCase())
-          .filter(Boolean),
-        withholding_tax_amount: type === 'income' && withholdingTax ? Number(withholdingTax) : null,
-        ...folderToColumns(folder),
-      });
+      try {
+        const result = await confirmTransaction({
+          transaction_id: transaction.id,
+          space_id: spaceId,
+          type,
+          account_id: accountId || '',
+          destination_account_id: type === 'transfer' ? destinationAccountId : null,
+          category_id: finalCategoryId,
+          amount_original: parsedAmount,
+          currency_original: currency,
+          exchange_rate: Number(exchangeRate) || 1,
+          description: description || null,
+          transaction_date: transactionIso,
+          receipt_id: transaction.receiptId,
+          tags: tagsInput
+            .split(',')
+            .map((t) => t.trim().toLowerCase())
+            .filter(Boolean),
+          withholding_tax_amount: type === 'income' && withholdingTax ? Number(withholdingTax) : null,
+          ...folderToColumns(folder),
+        });
 
-      if (!result.success) {
-        // Rollback silencioso: vuelve el formulario con lo que la persona ya
-        // habia editado, y explica que paso ahi mismo -- nada de alertas.
-        setOptimisticOutcome(null);
-        setError(result.error);
-        return;
-      }
+        if (!result.success) {
+          // Rollback silencioso: vuelve el formulario con lo que la persona ya
+          // habia editado, y explica que paso ahi mismo -- nada de alertas.
+          setOptimisticOutcome(null);
+          setError(result.error);
+          return;
+        }
 
-      router.refresh();
+        router.refresh();
 
-      // Destello dorado sobre el Hero de balance -- "cierre de ciclo mental"
-      // al confirmar. window.dispatchEvent porque NetWorthHero vive en otra
-      // rama del arbol (no es hijo de esta tarjeta), y esta es la unica señal
-      // efimera que necesita cruzar esa distancia.
-      window.dispatchEvent(new CustomEvent(TRANSACTION_CONFIRMED_EVENT));
+        // Destello dorado sobre el Hero de balance -- "cierre de ciclo mental"
+        // al confirmar. window.dispatchEvent porque NetWorthHero vive en otra
+        // rama del arbol (no es hijo de esta tarjeta), y esta es la unica señal
+        // efimera que necesita cruzar esa distancia.
+        window.dispatchEvent(new CustomEvent(TRANSACTION_CONFIRMED_EVENT));
 
-      // El insight es una mejora sobre la frase de refuerzo, no un requisito
-      // para que la tarjeta reaccione -- si tarda, falla, o no hay nada mas
-      // informativo que decir, la frase ya mostrada se queda tal cual.
-      getConfirmationInsight({
-        spaceId,
-        type,
-        categoryId: finalCategoryId,
-        transactionDate: transactionIso,
-      })
-        .then((message) => {
-          if (!message) return;
-          setOptimisticOutcome((current) => (current?.kind === 'confirm' ? { ...current, message } : current));
+        // El insight es una mejora sobre la frase de refuerzo, no un requisito
+        // para que la tarjeta reaccione -- si tarda, falla, o no hay nada mas
+        // informativo que decir, la frase ya mostrada se queda tal cual.
+        getConfirmationInsight({
+          spaceId,
+          type,
+          categoryId: finalCategoryId,
+          transactionDate: transactionIso,
         })
-        .catch(() => {});
+          .then((message) => {
+            if (!message) return;
+            setOptimisticOutcome((current) => (current?.kind === 'confirm' ? { ...current, message } : current));
+          })
+          .catch(() => {});
+      } catch (err) {
+        // Auditoria P9: sin este catch, una caida de red dejaba la tarjeta
+        // atascada en el estado optimista de "listo" sin que el movimiento
+        // realmente se hubiera confirmado -- se revierte al formulario, igual
+        // que un fallo controlado, para que la persona sepa que debe reintentar.
+        console.error('Error de red al confirmar el movimiento:', err);
+        setOptimisticOutcome(null);
+        setError('Se perdio la conexion antes de confirmar. Intenta de nuevo.');
+      }
     });
   }
 
@@ -182,32 +192,44 @@ export function PendingConfirmationCard({
   function handleLookupRate() {
     setRateLookupNote(null);
     setIsLookingUpRate(true);
-    getExchangeRate(currency, baseCurrency, date).then((result) => {
-      setIsLookingUpRate(false);
-      if (!result.success) {
-        setRateLookupNote(result.error);
-        return;
-      }
-      setExchangeRate(String(result.data.rate));
-      setRateLookupNote(
-        result.data.isApprox
-          ? `Tasa aproximada del ${result.data.rateDate} (no habia una exacta para ${date}).`
-          : `Tasa de ${result.data.rateDate} encontrada.`,
-      );
-    });
+    getExchangeRate(currency, baseCurrency, date)
+      .then((result) => {
+        setIsLookingUpRate(false);
+        if (!result.success) {
+          setRateLookupNote(result.error);
+          return;
+        }
+        setExchangeRate(String(result.data.rate));
+        setRateLookupNote(
+          result.data.isApprox
+            ? `Tasa aproximada del ${result.data.rateDate} (no habia una exacta para ${date}).`
+            : `Tasa de ${result.data.rateDate} encontrada.`,
+        );
+      })
+      .catch((err) => {
+        console.error('Error de red al buscar la tasa de cambio:', err);
+        setIsLookingUpRate(false);
+        setRateLookupNote('Se perdio la conexion antes de buscar la tasa. Intenta de nuevo.');
+      });
   }
 
   function handleReject() {
     setError(null);
     setOptimisticOutcome({ kind: 'reject', message: 'Descartado. Menos ruido en tu bandeja.' });
     startTransition(async () => {
-      const result = await rejectPendingTransaction(transaction.id, spaceId);
-      if (!result.success) {
+      try {
+        const result = await rejectPendingTransaction(transaction.id, spaceId);
+        if (!result.success) {
+          setOptimisticOutcome(null);
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al descartar el movimiento:', err);
         setOptimisticOutcome(null);
-        setError(result.error);
-        return;
+        setError('Se perdio la conexion antes de descartar. Intenta de nuevo.');
       }
-      router.refresh();
     });
   }
 
@@ -215,20 +237,25 @@ export function PendingConfirmationCard({
     if (!transaction.clarificationQuestion) return;
     setError(null);
     startTransition(async () => {
-      const result = await saveClassificationHint({
-        space_id: spaceId,
-        transaction_id: transaction.id,
-        question: transaction.clarificationQuestion!,
-        answer,
-      });
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await saveClassificationHint({
+          space_id: spaceId,
+          transaction_id: transaction.id,
+          question: transaction.clarificationQuestion!,
+          answer,
+        });
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        if (appendToDescription) {
+          setDescription((current) => (current ? `${current} — ${answer}` : answer));
+        }
+        setClarificationAnswered(true);
+      } catch (err) {
+        console.error('Error de red al guardar la respuesta:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      if (appendToDescription) {
-        setDescription((current) => (current ? `${current} — ${answer}` : answer));
-      }
-      setClarificationAnswered(true);
     });
   }
 
@@ -254,13 +281,19 @@ export function PendingConfirmationCard({
     setError(null);
     setOptimisticOutcome({ kind: 'move', message: `Movido a ${transaction.suggestedSpaceName}.` });
     startTransition(async () => {
-      const result = await moveTransactionToSpace(transaction.id, spaceId, transaction.suggestedSpaceId!);
-      if (!result.success) {
+      try {
+        const result = await moveTransactionToSpace(transaction.id, spaceId, transaction.suggestedSpaceId!);
+        if (!result.success) {
+          setOptimisticOutcome(null);
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al mover el movimiento de espacio:', err);
         setOptimisticOutcome(null);
-        setError(result.error);
-        return;
+        setError('Se perdio la conexion antes de mover el movimiento. Intenta de nuevo.');
       }
-      router.refresh();
     });
   }
 
@@ -268,12 +301,17 @@ export function PendingConfirmationCard({
     const receiptId = transaction.receiptId;
     if (!receiptId) return;
     startTransition(async () => {
-      const result = await getReceiptSignedUrl(receiptId, spaceId);
-      if ('error' in result) {
-        setError(result.error);
-        return;
+      try {
+        const result = await getReceiptSignedUrl(receiptId, spaceId);
+        if ('error' in result) {
+          setError(result.error);
+          return;
+        }
+        setDocumentUrl(result.url);
+      } catch (err) {
+        console.error('Error de red al abrir el documento:', err);
+        setError('Se perdio la conexion antes de abrir el documento. Intenta de nuevo.');
       }
-      setDocumentUrl(result.url);
     });
   }
 

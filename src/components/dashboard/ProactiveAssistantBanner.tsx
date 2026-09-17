@@ -35,6 +35,7 @@ export function ProactiveAssistantBanner({ spaceId, baseCurrency, recurringOblig
   const [mounted, setMounted] = useState(false);
   const [actionedKeys, setActionedKeys] = useState<Set<string>>(new Set());
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -42,13 +43,25 @@ export function ProactiveAssistantBanner({ spaceId, baseCurrency, recurringOblig
 
   function handleConfirmObligation(obligation: RecurringObligation) {
     setPendingKey(obligation.key);
-    createPendingFromRecurringObligation(spaceId, obligation).then((result) => {
-      setPendingKey(null);
-      if (result.success) {
-        setActionedKeys((prev) => new Set(prev).add(obligation.key));
-        router.refresh();
-      }
-    });
+    setErrorKey(null);
+    createPendingFromRecurringObligation(spaceId, obligation)
+      .then((result) => {
+        setPendingKey(null);
+        if (result.success) {
+          setActionedKeys((prev) => new Set(prev).add(obligation.key));
+          router.refresh();
+          return;
+        }
+        // Antes se ignoraba en silencio: el boton quedaba deshabilitado en
+        // "Guardando..." un instante y volvia a "Si, confirmar" sin ningun
+        // aviso de que en realidad no se guardo nada.
+        setErrorKey(obligation.key);
+      })
+      .catch((err) => {
+        console.error('Error de red al confirmar la obligacion recurrente:', err);
+        setPendingKey(null);
+        setErrorKey(obligation.key);
+      });
   }
 
   // Se evita renderizar antes de montar para no desincronizar el HTML del
@@ -89,6 +102,9 @@ export function ProactiveAssistantBanner({ spaceId, baseCurrency, recurringOblig
               Registrar gasto
             </button>
           </div>
+          {errorKey === obligation.key && (
+            <p className="mt-2 text-xs text-red-400">No se pudo guardar -- revisa tu conexion e intenta de nuevo.</p>
+          )}
         </div>
       ))}
     </div>

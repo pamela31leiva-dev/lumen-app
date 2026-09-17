@@ -66,19 +66,30 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete, 
     setError(null);
     setRemovedIds((prev) => new Set(prev).add(id));
     startTransition(async () => {
-      const result = await deleteTransaction(id, spaceId);
-      if (!result.success) {
-        setError(result.error);
+      try {
+        const result = await deleteTransaction(id, spaceId);
+        if (!result.success) {
+          setError(result.error);
+          setRemovedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          setConfirmingId(null);
+          return;
+        }
+        setConfirmingId(null);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al eliminar el movimiento:', err);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
         setRemovedIds((prev) => {
           const next = new Set(prev);
           next.delete(id);
           return next;
         });
         setConfirmingId(null);
-        return;
       }
-      setConfirmingId(null);
-      router.refresh();
     });
   }
 
@@ -86,15 +97,22 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete, 
     setError(null);
     setTaxUpdatingId(id);
     const nextValue = value === NONE_VALUE ? null : (value as TaxTreatment);
-    updateTransactionTaxTreatment(id, spaceId, nextValue).then((result) => {
-      setTaxUpdatingId(null);
-      setEditingTaxId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    updateTransactionTaxTreatment(id, spaceId, nextValue)
+      .then((result) => {
+        setTaxUpdatingId(null);
+        setEditingTaxId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al ajustar la clasificacion fiscal:', err);
+        setTaxUpdatingId(null);
+        setEditingTaxId(null);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
+      });
   }
 
   function toggleSelectionMode() {
@@ -117,14 +135,19 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete, 
     setError(null);
     const ids = Array.from(selectedIds);
     startTransition(async () => {
-      const result = await bulkUpdateCategory(ids, spaceId, bulkCategoryId);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await bulkUpdateCategory(ids, spaceId, bulkCategoryId);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setSelectedIds(new Set());
+        setBulkCategoryId('');
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al recategorizar en lote:', err);
+        setError('Se perdio la conexion antes de aplicar el cambio. Intenta de nuevo.');
       }
-      setSelectedIds(new Set());
-      setBulkCategoryId('');
-      router.refresh();
     });
   }
 
@@ -137,20 +160,31 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete, 
       return next;
     });
     startTransition(async () => {
-      const result = await bulkDeleteTransactions(ids, spaceId);
-      if (!result.success) {
-        setError(result.error);
+      try {
+        const result = await bulkDeleteTransactions(ids, spaceId);
+        if (!result.success) {
+          setError(result.error);
+          setRemovedIds((prev) => {
+            const next = new Set(prev);
+            ids.forEach((id) => next.delete(id));
+            return next;
+          });
+          setConfirmingBulkDelete(false);
+          return;
+        }
+        setSelectedIds(new Set());
+        setConfirmingBulkDelete(false);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al eliminar en lote:', err);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
         setRemovedIds((prev) => {
           const next = new Set(prev);
           ids.forEach((id) => next.delete(id));
           return next;
         });
         setConfirmingBulkDelete(false);
-        return;
       }
-      setSelectedIds(new Set());
-      setConfirmingBulkDelete(false);
-      router.refresh();
     });
   }
 

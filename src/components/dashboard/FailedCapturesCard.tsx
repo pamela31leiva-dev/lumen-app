@@ -28,39 +28,54 @@ function CaptureRow({ spaceId, capture }: { spaceId: string; capture: FailedCapt
   function handleRetry() {
     setError(null);
     startTransition(async () => {
-      const result = await retryFailedCapture(spaceId, capture.id);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await retryFailedCapture(spaceId, capture.id);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setResolved(true);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al reintentar la captura:', err);
+        setError('Se perdio la conexion antes de reintentar. Intenta de nuevo.');
       }
-      setResolved(true);
-      router.refresh();
     });
   }
 
   function handleEditRetry() {
     setError(null);
     startTransition(async () => {
-      const result = await editAndRetryFailedCapture(spaceId, capture.id, editedText);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await editAndRetryFailedCapture(spaceId, capture.id, editedText);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setResolved(true);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al corregir y reintentar la captura:', err);
+        setError('Se perdio la conexion antes de reintentar. Intenta de nuevo.');
       }
-      setResolved(true);
-      router.refresh();
     });
   }
 
   function handleDiscard() {
     setError(null);
     startTransition(async () => {
-      const result = await discardFailedCapture(spaceId, capture.id);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await discardFailedCapture(spaceId, capture.id);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setResolved(true);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al descartar la captura:', err);
+        setError('Se perdio la conexion antes de descartar. Intenta de nuevo.');
       }
-      setResolved(true);
-      router.refresh();
     });
   }
 

@@ -43,16 +43,21 @@ export function CreateAccountForm({ spaceId, baseCurrency }: CreateAccountFormPr
       return;
     }
     startTransition(async () => {
-      const result = await createAccount(spaceId, name, type, currency);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createAccount(spaceId, name, type, currency);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setShowForm(false);
+        setName('');
+        setType('bank');
+        setCurrency(baseCurrency);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al crear la cuenta:', err);
+        setError('Se perdio la conexion antes de crear la cuenta. Intenta de nuevo.');
       }
-      setShowForm(false);
-      setName('');
-      setType('bank');
-      setCurrency(baseCurrency);
-      router.refresh();
     });
   }
 

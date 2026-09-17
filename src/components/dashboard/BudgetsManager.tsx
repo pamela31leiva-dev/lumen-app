@@ -53,31 +53,42 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
     }
 
     startTransition(async () => {
-      const result = await setBudget(spaceId, categoryId, parsed, currency);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await setBudget(spaceId, categoryId, parsed, currency);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setShowForm(false);
+        setCategoryId('');
+        setAmount('');
+        setCurrency(baseCurrency);
+        setShowCurrencyPicker(false);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al guardar el presupuesto:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      setShowForm(false);
-      setCategoryId('');
-      setAmount('');
-      setCurrency(baseCurrency);
-      setShowCurrencyPicker(false);
-      router.refresh();
     });
   }
 
   function handleDelete(budgetId: string) {
     setError(null);
     setDeletingId(budgetId);
-    deleteBudget(spaceId, budgetId).then((result) => {
-      setDeletingId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    deleteBudget(spaceId, budgetId)
+      .then((result) => {
+        setDeletingId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al eliminar el presupuesto:', err);
+        setDeletingId(null);
+        setError('Se perdio la conexion antes de eliminar. Intenta de nuevo.');
+      });
   }
 
   return (

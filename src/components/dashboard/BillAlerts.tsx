@@ -42,13 +42,19 @@ export function BillAlerts({ spaceId, bills, reminderDays }: BillAlertsProps) {
     setError(null);
     setPayingId(billId);
     startTransition(async () => {
-      const result = await markBillPaid(spaceId, billId);
-      if (!result.success) {
-        setError(result.error);
+      try {
+        const result = await markBillPaid(spaceId, billId);
+        if (!result.success) {
+          setError(result.error);
+          setPayingId(null);
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al marcar la factura como pagada:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
         setPayingId(null);
-        return;
       }
-      router.refresh();
     });
   }
 
@@ -61,16 +67,21 @@ export function BillAlerts({ spaceId, bills, reminderDays }: BillAlertsProps) {
       return;
     }
     startTransition(async () => {
-      const result = await createBill(spaceId, description.trim(), parsedAmount, 'COP', dueDate);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createBill(spaceId, description.trim(), parsedAmount, 'COP', dueDate);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setDescription('');
+        setAmount('');
+        setDueDate('');
+        setShowForm(false);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al crear la factura:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      setDescription('');
-      setAmount('');
-      setDueDate('');
-      setShowForm(false);
-      router.refresh();
     });
   }
 

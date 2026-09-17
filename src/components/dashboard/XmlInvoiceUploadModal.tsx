@@ -42,19 +42,24 @@ export function XmlInvoiceUploadModal({ spaceId }: XmlInvoiceUploadModalProps) {
 
     setResult(null);
     startTransition(async () => {
-      const supabase = getSupabaseBrowserClient();
-      const path = `${spaceId}/${crypto.randomUUID()}-${file.name}`;
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const path = `${spaceId}/${crypto.randomUUID()}-${file.name}`;
 
-      const { error: uploadError } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
-      if (uploadError) {
-        console.error('Error al subir el XML de la factura:', uploadError);
-        setResult({ success: false, error: 'No se pudo subir el archivo. Intenta de nuevo.' });
-        return;
+        const { error: uploadError } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
+        if (uploadError) {
+          console.error('Error al subir el XML de la factura:', uploadError);
+          setResult({ success: false, error: 'No se pudo subir el archivo. Intenta de nuevo.' });
+          return;
+        }
+
+        const outcome = await processUblInvoiceUpload(spaceId, path, file.name);
+        setResult(outcome);
+        if (outcome.success) router.refresh();
+      } catch (err) {
+        console.error('Error de red al procesar la factura XML:', err);
+        setResult({ success: false, error: 'Se perdio la conexion antes de terminar. Intenta de nuevo.' });
       }
-
-      const outcome = await processUblInvoiceUpload(spaceId, path, file.name);
-      setResult(outcome);
-      if (outcome.success) router.refresh();
     });
   }
 

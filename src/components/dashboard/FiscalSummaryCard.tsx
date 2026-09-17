@@ -29,19 +29,32 @@ export function FiscalSummaryCard({ spaceId, baseCurrency, initialSummary }: Fis
   const [year, setYear] = useState(initialSummary.year);
   const [summary, setSummary] = useState(initialSummary);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (year === initialSummary.year) {
       setSummary(initialSummary);
+      setLoadError(null);
       return;
     }
     let cancelled = false;
     setIsLoading(true);
-    getFiscalSummary(spaceId, year).then((result) => {
-      if (cancelled) return;
-      setSummary(result);
-      setIsLoading(false);
-    });
+    setLoadError(null);
+    getFiscalSummary(spaceId, year)
+      .then((result) => {
+        if (cancelled) return;
+        setSummary(result);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // Sin este catch, una caida de red aqui dejaba "Calculando..." fijo
+        // para siempre -- el año cambiaba mas no el contenido, sin ninguna
+        // pista de por que.
+        console.error('Error de red al cargar el resumen fiscal:', err);
+        setIsLoading(false);
+        setLoadError('Se perdio la conexion antes de cargar este año. Intenta de nuevo.');
+      });
     return () => {
       cancelled = true;
     };
@@ -93,6 +106,8 @@ export function FiscalSummaryCard({ spaceId, baseCurrency, initialSummary }: Fis
           </button>
           {isLoading && <span className="text-xs text-stone-600">Calculando...</span>}
         </div>
+
+        {loadError && <p className="mb-3 text-xs text-red-400">{loadError}</p>}
 
         <ul className="flex flex-col divide-y divide-white/10">
           {[...incomeRows, ...expenseRows].map((row) => (

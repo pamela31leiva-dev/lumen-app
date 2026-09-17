@@ -58,14 +58,19 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
     if (!trimmed) return;
 
     startTransition(async () => {
-      const result = await inviteMemberByEmail(spaceId, trimmed, inviteRole);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await inviteMemberByEmail(spaceId, trimmed, inviteRole);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setEmail('');
+        setSuccess('Listo, ya es parte de este espacio.');
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al invitar al miembro:', err);
+        setError('Se perdio la conexion antes de invitar. Intenta de nuevo.');
       }
-      setEmail('');
-      setSuccess('Listo, ya es parte de este espacio.');
-      router.refresh();
     });
   }
 
@@ -73,31 +78,47 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
     setError(null);
     setRemovingIds((prev) => new Set(prev).add(userId));
     startTransition(async () => {
-      const result = await removeMember(spaceId, userId);
-      if (!result.success) {
-        setError(result.error);
+      try {
+        const result = await removeMember(spaceId, userId);
+        if (!result.success) {
+          setError(result.error);
+          setRemovingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(userId);
+            return next;
+          });
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al quitar al miembro:', err);
+        setError('Se perdio la conexion antes de quitar al miembro. Intenta de nuevo.');
         setRemovingIds((prev) => {
           const next = new Set(prev);
           next.delete(userId);
           return next;
         });
-        return;
       }
-      router.refresh();
     });
   }
 
   function handleRoleChange(userId: string, role: string) {
     setError(null);
     setChangingRoleId(userId);
-    updateMemberRole(spaceId, userId, role as AssignableRole).then((result) => {
-      setChangingRoleId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    updateMemberRole(spaceId, userId, role as AssignableRole)
+      .then((result) => {
+        setChangingRoleId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al cambiar el rol:', err);
+        setChangingRoleId(null);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
+      });
   }
 
   const visibleMembers = members.filter((m) => !removingIds.has(m.userId));

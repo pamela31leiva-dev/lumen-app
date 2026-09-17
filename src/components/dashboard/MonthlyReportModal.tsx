@@ -37,14 +37,20 @@ export function MonthlyReportModal({ spaceId, baseCurrency }: MonthlyReportModal
     if (!open) return;
     setIsLoading(true);
     setError(null);
-    getMonthlyReport(spaceId, monthKey(cursor)).then((result) => {
-      setIsLoading(false);
-      if ('error' in result) {
-        setError(result.error);
-        return;
-      }
-      setReport(result);
-    });
+    getMonthlyReport(spaceId, monthKey(cursor))
+      .then((result) => {
+        setIsLoading(false);
+        if ('error' in result) {
+          setError(result.error);
+          return;
+        }
+        setReport(result);
+      })
+      .catch((err) => {
+        console.error('Error de red al cargar el reporte mensual:', err);
+        setIsLoading(false);
+        setError('Se perdio la conexion antes de cargar el reporte. Intenta de nuevo.');
+      });
   }, [open, spaceId, cursor]);
 
   return (

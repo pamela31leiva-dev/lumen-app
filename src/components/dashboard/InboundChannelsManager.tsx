@@ -35,28 +35,39 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
   function handleCreate() {
     setError(null);
     startTransition(async () => {
-      const result = await createInboundChannel(spaceId, label);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createInboundChannel(spaceId, label);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setNewToken(result.token);
+        setLabel('');
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al crear el canal:', err);
+        setError('Se perdio la conexion antes de crear el canal. Intenta de nuevo.');
       }
-      setNewToken(result.token);
-      setLabel('');
-      router.refresh();
     });
   }
 
   function handleRevoke(channelId: string) {
     setError(null);
     setRevokingId(channelId);
-    revokeInboundChannel(spaceId, channelId).then((result) => {
-      setRevokingId(null);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
-    });
+    revokeInboundChannel(spaceId, channelId)
+      .then((result) => {
+        setRevokingId(null);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al revocar el canal:', err);
+        setRevokingId(null);
+        setError('Se perdio la conexion antes de revocar. Intenta de nuevo.');
+      });
   }
 
   async function copy(text: string, which: 'token' | 'url') {

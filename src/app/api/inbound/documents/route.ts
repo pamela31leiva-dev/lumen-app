@@ -24,6 +24,20 @@ import { reportError } from '@/lib/telemetry/reporter';
 
 const MAX_FILE_SIZE_MB = 15;
 
+/**
+ * Auditoria P9 (mitigacion de abuso): un token filtrado o un webhook mal
+ * configurado en bucle podia disparar el motor de IA (Gemini) sin ningun
+ * limite, agotando la cuota gratuita del espacio -- o de toda la app, si el
+ * proveedor es compartido. min-interval basado en last_used_at es la
+ * mitigacion mas simple posible sin infraestructura nueva (sin Redis/KV):
+ * rechaza una peticion si la anterior de ESE MISMO canal fue hace menos de
+ * INBOUND_MIN_INTERVAL_SECONDS. El UPDATE condicional de abajo (WHERE
+ * last_used_at is null or < ahora-intervalo) es atomico -- dos peticiones
+ * casi simultaneas del mismo canal nunca pasan ambas, sin necesidad de un
+ * lock aparte.
+ */
+const INBOUND_MIN_INTERVAL_SECONDS = Number(process.env.INBOUND_MIN_INTERVAL_SECONDS ?? 3);
+
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -47,7 +61,7 @@ export async function POST(request: Request) {
 
   const { data: channel, error: channelError } = await supabase
     .from('inbound_channels')
-    .select('id, space_id, created_by, is_active')
+    .select('id, space_id, created_by, is_active, last_used_at')
     .eq('token_hash', hashToken(token))
     .maybeSingle();
 
@@ -59,18 +73,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Token invalido, revocado, o inactivo.' }, { status: 401 });
   }
 
+  // Mitigacion de rafagas: UPDATE condicional y atomico -- si no afecta
+  // ninguna fila, es porque la ultima peticion de este canal fue hace menos
+  // de INBOUND_MIN_INTERVAL_SECONDS. Se rechaza ANTES de leer el body o
+  // tocar Storage/IA, para que una rafaga real cueste lo minimo posible.
+  const now = new Date();
+  const cooldownThreshold = new Date(now.getTime() - INBOUND_MIN_INTERVAL_SECONDS * 1000).toISOString();
+  const { data: touchedChannel, error: touchError } = await supabase
+    .from('inbound_channels')
+    .update({ last_used_at: now.toISOString() })
+    .eq('id', channel.id)
+    .or(`last_used_at.is.null,last_used_at.lt.${cooldownThreshold}`)
+    .select('id')
+    .maybeSingle();
+
+  if (touchError) {
+    console.error('Error al validar el limite de frecuencia del canal entrante:', touchError);
+    return NextResponse.json({ error: 'No se pudo validar la solicitud.' }, { status: 500 });
+  }
+  if (!touchedChannel) {
+    return NextResponse.json(
+      { error: `Demasiadas solicitudes seguidas para este canal. Espera al menos ${INBOUND_MIN_INTERVAL_SECONDS} segundos entre envios.` },
+      { status: 429 },
+    );
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();
   } catch {
     return NextResponse.json({ error: 'El cuerpo debe ser multipart/form-data, con un campo "file" o "text".' }, { status: 400 });
   }
-
-  const { error: touchError } = await supabase
-    .from('inbound_channels')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', channel.id);
-  if (touchError) console.error('Error al actualizar last_used_at del canal entrante:', touchError);
 
   const file = formData.get('file');
   const text = formData.get('text');

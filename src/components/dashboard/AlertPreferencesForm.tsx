@@ -35,15 +35,21 @@ export function AlertPreferencesForm({ spaceId, currentBillReminderDays, canEdit
     }
 
     setIsSaving(true);
-    updateAlertPreferences(spaceId, parsed).then((result) => {
-      setIsSaving(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      setSaved(true);
-      router.refresh();
-    });
+    updateAlertPreferences(spaceId, parsed)
+      .then((result) => {
+        setIsSaving(false);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setSaved(true);
+        router.refresh();
+      })
+      .catch((err) => {
+        console.error('Error de red al guardar las preferencias de alerta:', err);
+        setIsSaving(false);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
+      });
   }
 
   return (

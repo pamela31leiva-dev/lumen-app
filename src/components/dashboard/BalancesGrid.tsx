@@ -59,13 +59,18 @@ export function BalancesGrid({ baseCurrency, accounts }: BalancesGridProps) {
     }
     setError(null);
     startTransition(async () => {
-      const result = await updateOpeningBalance(account.accountId, account.spaceId, parsed);
-      if (!result.success) {
-        setError(result.error);
-        return;
+      try {
+        const result = await updateOpeningBalance(account.accountId, account.spaceId, parsed);
+        if (!result.success) {
+          setError(result.error);
+          return;
+        }
+        setEditingId(null);
+        router.refresh();
+      } catch (err) {
+        console.error('Error de red al guardar el saldo inicial:', err);
+        setError('Se perdio la conexion antes de guardar. Intenta de nuevo.');
       }
-      setEditingId(null);
-      router.refresh();
     });
   }
 
