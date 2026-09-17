@@ -6,6 +6,8 @@ import { getFailedCaptures } from '@/actions/ingestion';
 import { getFinancialHistory } from '@/actions/analytics-history';
 import { getFiscalSummary } from '@/actions/fiscal';
 import { checkSpaceIsPro } from '@/actions/plan-limits';
+import { LumenGuideTip } from '@/components/guide/LumenGuideTip';
+import { GUIDE_MESSAGES } from '@/domain/guide/messages';
 import { computeFinancialKpis, resampleQuarterly } from '@/domain/analytics/kpis';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
@@ -149,6 +151,12 @@ export default async function ExecutiveBoardPage() {
           monthlyNetFlow={monthlyNetFlow}
           activityStreakDays={proactiveInsights.activityStreakDays}
         />
+
+        {/* Lumen Guide (Fase 1 -- identidad y asistente de marca): el
+            momento de mas friccion real de todo el tablero es "por que mi
+            Patrimonio Neto sigue en $0" -- un acompañamiento breve aqui vale
+            mas que en cualquier otra pantalla. */}
+        {!balances.hasRealAssets && <LumenGuideTip {...GUIDE_MESSAGES.netWorthEmpty} />}
 
         {/* KPIs Financieros + Reporte Mensual (Bloque P3): solo tiene sentido
             leer tasa de ahorro/liquidez/endeudamiento cuando ya hay

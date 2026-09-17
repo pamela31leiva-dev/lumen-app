@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { applyStandardFiscalTags, deleteCategoryFiscalTag, setCategoryFiscalTag, type CategoryFiscalTagSummary } from '@/actions/fiscal';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { LumenGuideTip } from '@/components/guide/LumenGuideTip';
+import { GUIDE_MESSAGES } from '@/domain/guide/messages';
 import {
   EXPENSE_TAX_TREATMENTS,
   INCOME_TAX_TREATMENTS,
@@ -152,6 +154,11 @@ export function FiscalCategoriesManager({ spaceId, spaceType, categories, tags, 
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Lumen Guide (Fase 1): la clasificacion tributaria es, de lejos, la
+          pantalla donde mas se necesita un acompañamiento que baje la
+          guardia de "esto es cosa de contadores" antes de siquiera leer el glosario. */}
+      <LumenGuideTip {...GUIDE_MESSAGES.fiscalGlossaryIntro} />
+
       {/* Glosario en lenguaje humano -- "gravado" o "deducible" no dicen nada
           por si solos a quien no es contador. Siempre visible (no un tooltip
           escondido detras de un hover, que en movil ni siquiera existe). */}

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { bulkDeleteTransactions, bulkUpdateCategory, deleteTransaction } from '@/actions/confirm';
 import { updateTransactionTaxTreatment } from '@/actions/fiscal';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { LumenGuideTip } from '@/components/guide/LumenGuideTip';
+import { GUIDE_MESSAGES } from '@/domain/guide/messages';
 import { EXPENSE_TAX_TREATMENTS, INCOME_TAX_TREATMENTS, TAX_TREATMENT_LABEL, type TaxTreatment } from '@/domain/types/fiscal';
 import type { CategoryOption, TransactionHistoryItem } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
@@ -191,7 +193,7 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete, 
   const visibleItems = items.filter((item) => !removedIds.has(item.id));
 
   if (visibleItems.length === 0) {
-    return <p className="py-3 text-sm text-stone-500">Todavia no hay movimientos confirmados en este espacio.</p>;
+    return <LumenGuideTip {...GUIDE_MESSAGES.movementsEmpty} className="my-1" />;
   }
 
   return (
