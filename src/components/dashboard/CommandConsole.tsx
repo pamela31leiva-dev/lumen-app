@@ -200,18 +200,28 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
     if (!trimmed) return;
     setFeedback(null);
     startTransition(async () => {
-      const result = await processIncomingCapture({ space_id: spaceId, capture_source: 'ai_text', raw_text: trimmed });
-      if (!result.success) {
-        setFeedback({ kind: 'error', message: result.error });
-        return;
+      try {
+        const result = await processIncomingCapture({ space_id: spaceId, capture_source: 'ai_text', raw_text: trimmed });
+        if (!result.success) {
+          setFeedback({ kind: 'error', message: result.error });
+          return;
+        }
+        setText('');
+        setFeedback({
+          kind: 'success',
+          message: result.needsReview ? 'Registrado. Vale la pena confirmar un par de detalles.' : 'Registrado. Tu mapa sigue intacto.',
+        });
+        router.refresh();
+        scrollToPendingTransaction(result.transactionId);
+      } catch (error) {
+        // Auditoria P9: sin este catch, una caida de red o un timeout del
+        // servidor a mitad de la captura dejaba el boton "Registrar" activo
+        // de nuevo sin ningun aviso -- la persona no sabia si su movimiento
+        // quedo guardado o no. El texto escrito se conserva a proposito (no
+        // se limpia el input) para que reintentar sea con un solo toque.
+        console.error('Error de red al registrar el movimiento:', error);
+        setFeedback({ kind: 'error', message: 'Se perdio la conexion antes de terminar. Revisa tu internet e intenta de nuevo.' });
       }
-      setText('');
-      setFeedback({
-        kind: 'success',
-        message: result.needsReview ? 'Registrado. Vale la pena confirmar un par de detalles.' : 'Registrado. Tu mapa sigue intacto.',
-      });
-      router.refresh();
-      scrollToPendingTransaction(result.transactionId);
     });
   }
 
@@ -256,37 +266,45 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
     if (!file) return;
     setFeedback(null);
     startTransition(async () => {
-      const supabase = getSupabaseBrowserClient();
-      const path = `${spaceId}/${crypto.randomUUID()}-${file.name}`;
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const path = `${spaceId}/${crypto.randomUUID()}-${file.name}`;
 
-      const { error: uploadError } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
-      if (uploadError) {
-        console.error('Error al subir el documento:', uploadError);
-        setFeedback({ kind: 'error', message: 'No se pudo subir el archivo. Intenta de nuevo.' });
-        return;
+        const { error: uploadError } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
+        if (uploadError) {
+          console.error('Error al subir el documento:', uploadError);
+          setFeedback({ kind: 'error', message: 'No se pudo subir el archivo. Intenta de nuevo.' });
+          return;
+        }
+
+        const result = await processIncomingCapture({
+          space_id: spaceId,
+          capture_source: sourceForMimeType(file.type),
+          storage_path: path,
+          mime_type: file.type,
+          original_filename: file.name,
+        });
+
+        if (!result.success) {
+          if (result.illegible) clearSelectedFile();
+          setFeedback({ kind: result.illegible ? 'illegible' : 'error', message: result.error });
+          return;
+        }
+
+        clearSelectedFile();
+        setFeedback({
+          kind: 'success',
+          message: result.needsReview ? 'Documento registrado. Vale la pena confirmar un par de detalles.' : 'Documento registrado. Tu mapa sigue intacto.',
+        });
+        router.refresh();
+        scrollToPendingTransaction(result.transactionId);
+      } catch (error) {
+        // Auditoria P9 (mismo hallazgo que submitText): el archivo NO se
+        // descarta -- selectedFile sigue intacto para reintentar sin tener
+        // que elegirlo de nuevo desde la camara/galeria.
+        console.error('Error de red al subir el documento:', error);
+        setFeedback({ kind: 'error', message: 'Se perdio la conexion antes de terminar. Revisa tu internet e intenta de nuevo.' });
       }
-
-      const result = await processIncomingCapture({
-        space_id: spaceId,
-        capture_source: sourceForMimeType(file.type),
-        storage_path: path,
-        mime_type: file.type,
-        original_filename: file.name,
-      });
-
-      if (!result.success) {
-        if (result.illegible) clearSelectedFile();
-        setFeedback({ kind: result.illegible ? 'illegible' : 'error', message: result.error });
-        return;
-      }
-
-      clearSelectedFile();
-      setFeedback({
-        kind: 'success',
-        message: result.needsReview ? 'Documento registrado. Vale la pena confirmar un par de detalles.' : 'Documento registrado. Tu mapa sigue intacto.',
-      });
-      router.refresh();
-      scrollToPendingTransaction(result.transactionId);
     });
   }
 

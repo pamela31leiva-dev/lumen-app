@@ -2804,4 +2804,8 @@ as $$
 $$;
 
 
+
+-- 0035: idx_transactions_category (space_id, category_id) -- hallazgo de rendimiento de la Auditoria P9 --
+create index if not exists idx_transactions_category on public.transactions (space_id, category_id) where category_id is not null;
+
 commit;

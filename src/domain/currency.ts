@@ -20,3 +20,18 @@ export const SUPPORTED_CURRENCIES = [
 export type SupportedCurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]['code'];
 
 export const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((c) => ({ value: c.code, label: c.label }));
+
+/**
+ * Redondeo monetario a 2 decimales sin el error de representacion binaria
+ * clasico de `Math.round(x * 100) / 100` (ej. 1.005 * 100 puede llegar como
+ * 100.49999999999999 en punto flotante y redondear 1 centavo para abajo,
+ * silenciosamente). toFixed hace el redondeo sobre la representacion
+ * decimal en texto del numero, no sobre su binario -- evita esa clase de
+ * error para valores monetarios normales (hallazgo de la Auditoria P9).
+ * Solo para totales client/server-side ya EXHIBIDOS como aproximados (ej.
+ * conversion de activos alternativos) -- toda cifra contable real sigue
+ * viviendo en columnas numeric de Postgres, nunca en aritmetica de JS.
+ */
+export function roundMoney(value: number): number {
+  return Number(value.toFixed(2));
+}

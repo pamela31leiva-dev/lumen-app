@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { getExchangeRate } from '@/actions/currency';
+import { roundMoney } from '@/domain/currency';
 import type { AlternativeAssetSummary, AlternativeAssetType } from '@/domain/types/dashboard';
 
 interface AlternativeAssetRow {
@@ -59,7 +60,7 @@ export async function getAlternativeAssets(
   const assets: AlternativeAssetSummary[] = rows.map((row) => {
     const currentValue = Number(row.current_value);
     const rate = row.currency === baseCurrency ? 1 : rateByCurrency.get(row.currency);
-    const currentValueBase = rate !== undefined ? Math.round(currentValue * rate * 100) / 100 : null;
+    const currentValueBase = rate !== undefined ? roundMoney(currentValue * rate) : null;
     if (currentValueBase !== null) totalBase += currentValueBase;
 
     return {
@@ -76,7 +77,7 @@ export async function getAlternativeAssets(
     };
   });
 
-  return { assets, totalBase: Math.round(totalBase * 100) / 100 };
+  return { assets, totalBase: roundMoney(totalBase) };
 }
 
 interface AlternativeAssetInput {
