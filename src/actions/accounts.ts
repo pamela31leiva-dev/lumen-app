@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
+import { getExchangeRate } from '@/actions/currency';
 import type { AccountType } from '@/domain/types/dashboard';
 
 /**
@@ -54,6 +55,13 @@ export async function createAccount(
  * que un espacio pase a tener "activos reales" (ver hasRealAssets en
  * getAccountBalances): sin esto, "Patrimonio Neto" nunca tendria sentido, ya
  * que toda cuenta nace en $0 y el primer gasto la volveria negativa.
+ *
+ * opening_balance_fx_rate (0033): si la cuenta esta en una moneda distinta a
+ * la del espacio, se fija la tasa del dia AHORA -- igual que exchange_rate en
+ * una transaccion, no se recalcula sola despues. account_balances.current_balance
+ * es lo que multiplica opening_balance por esta tasa para consolidar en
+ * moneda base (antes de 0032 toda cuenta nacia ya en la moneda base, por eso
+ * este paso no existia).
  */
 export async function updateOpeningBalance(
   accountId: string,
@@ -74,9 +82,24 @@ export async function updateOpeningBalance(
     return { success: false, error: 'El saldo debe ser un numero valido, cero o mayor.' };
   }
 
+  const [{ data: account }, { data: space }] = await Promise.all([
+    supabase.from('accounts').select('currency').eq('id', accountId).eq('space_id', spaceId).single(),
+    supabase.from('spaces').select('base_currency').eq('id', spaceId).single(),
+  ]);
+  if (!account || !space) {
+    return { success: false, error: 'No se encontro la cuenta.' };
+  }
+
+  let fxRate = 1;
+  if (account.currency !== space.base_currency) {
+    const lookup = await getExchangeRate(account.currency, space.base_currency);
+    if (!lookup.success) return { success: false, error: lookup.error };
+    fxRate = lookup.data.rate;
+  }
+
   const { error, count } = await supabase
     .from('accounts')
-    .update({ opening_balance: openingBalance }, { count: 'exact' })
+    .update({ opening_balance: openingBalance, opening_balance_fx_rate: fxRate }, { count: 'exact' })
     .eq('id', accountId)
     .eq('space_id', spaceId);
 
