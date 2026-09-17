@@ -2,6 +2,7 @@
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { getCategoryTaxTreatment } from '@/actions/fiscal';
+import { checkMonthlyRecordLimitWithClient } from '@/actions/plan-limits-core';
 import type { ConfirmTransactionDTO, ConfirmTransactionResult } from '@/domain/types/capture';
 
 type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
@@ -59,6 +60,14 @@ export async function confirmTransaction(payload: ConfirmTransactionDTO): Promis
   } = await supabase.auth.getUser();
   if (authError || !user) {
     return { success: false, error: 'No autorizado' };
+  }
+
+  // Enforcement de plan (Bloque P9): se revisa ANTES de resolver cuenta/
+  // categoria -- si el espacio ya esta en su limite mensual, no tiene
+  // sentido seguir preparando una confirmacion que se va a rechazar.
+  const recordLimitCheck = await checkMonthlyRecordLimitWithClient(supabase, payload.space_id);
+  if (!recordLimitCheck.allowed) {
+    return { success: false, error: recordLimitCheck.error };
   }
 
   const accountId =

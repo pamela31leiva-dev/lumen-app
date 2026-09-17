@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
+import { checkSpaceCreationLimitWithClient } from '@/actions/plan-limits-core';
 import { ACTIVE_SPACE_COOKIE } from '@/lib/constants';
 import type {
   AccountBalancesData,
@@ -81,6 +82,9 @@ export async function createSpace(name: string, type: SpaceType, baseCurrency = 
 
   const trimmedName = name.trim();
   if (!trimmedName) return { success: false, error: 'El espacio necesita un nombre.' };
+
+  const limitCheck = await checkSpaceCreationLimitWithClient(supabase, user.id);
+  if (!limitCheck.allowed) return { success: false, error: limitCheck.error };
 
   const { data, error } = await supabase
     .rpc('create_space', { p_name: trimmedName, p_type: type, p_base_currency: baseCurrency })

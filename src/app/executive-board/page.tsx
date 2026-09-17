@@ -5,6 +5,7 @@ import { getExecutiveBoardSnapshot } from '@/actions/snapshot';
 import { getFailedCaptures } from '@/actions/ingestion';
 import { getFinancialHistory } from '@/actions/analytics-history';
 import { getFiscalSummary } from '@/actions/fiscal';
+import { checkSpaceIsPro } from '@/actions/plan-limits';
 import { computeFinancialKpis, resampleQuarterly } from '@/domain/analytics/kpis';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
@@ -67,8 +68,14 @@ export default async function ExecutiveBoardPage() {
 
   // Monetizacion asimetrica: la analitica avanzada de negocio (Picos de
   // Venta, Proyeccion de Caja) solo se restringe en espacios type='business'
-  // sin is_pro. Personal/Familiar/Proyecto siempre la tienen gratis.
-  const businessAnalyticsLocked = activeSpace.type === 'business' && !activeSpace.isPro;
+  // sin Pro. Personal/Familiar/Proyecto siempre la tienen gratis.
+  //
+  // Fuente unica de verdad (Bloque P9): checkSpaceIsPro unifica
+  // spaces.is_pro (bandera manual/simulacion) con subscriptions.plan (pago
+  // real del dueño) -- ver get_space_plan_limits (0036). Nunca leer
+  // activeSpace.isPro directo para decidir un bloqueo.
+  const isSpacePro = await checkSpaceIsPro(activeSpace.id);
+  const businessAnalyticsLocked = activeSpace.type === 'business' && !isSpacePro;
 
   // RBAC (Bloque P4): mismo umbral que las politicas RLS (has_space_role) --
   // canEdit habilita capturar/confirmar/importar (owner/admin/editor);
@@ -96,7 +103,7 @@ export default async function ExecutiveBoardPage() {
     folderDistribution,
     weekdayHeat,
     anomalies,
-  } = await getExecutiveBoardSnapshot(activeSpace.id, businessAnalyticsLocked, activeSpace.isPro);
+  } = await getExecutiveBoardSnapshot(activeSpace.id, businessAnalyticsLocked, isSpacePro);
 
   // Centro de Ingesta: entradas que ni Gemini ni el motor local pudieron
   // interpretar (ver adapter.ts + actions/capture.ts). Consulta aparte y
@@ -176,7 +183,7 @@ export default async function ExecutiveBoardPage() {
         {/* Auditoria de Anomalias -- nivel avanzado (is_pro): gastos muy
             fuera de lo normal de su propia categoria, calculado siempre en
             Postgres pero mostrado solo si el espacio tiene acceso avanzado. */}
-        {activeSpace.isPro && <AnomalyAuditCard anomalies={anomalies} baseCurrency={balances.baseCurrency} />}
+        {isSpacePro && <AnomalyAuditCard anomalies={anomalies} baseCurrency={balances.baseCurrency} />}
 
         {/* Inteligencia para Microemprendimientos + Proyeccion de Caja:
             solo existen cuando ya hay suficiente historial -- Cero Ruido

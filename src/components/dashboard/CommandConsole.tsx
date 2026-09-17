@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from '
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { processIncomingCapture } from '@/actions/capture';
+import { checkStorageQuota } from '@/actions/plan-limits';
 import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
 import type { AiCaptureSource } from '@/domain/types/capture';
 import { cn } from '@/lib/utils';
@@ -267,6 +268,15 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
     setFeedback(null);
     startTransition(async () => {
       try {
+        // Enforcement de plan (Bloque P9): se valida ANTES de subir a
+        // Storage -- rechazar despues de ya haber subido el archivo
+        // desperdiciaria el cupo que justo se esta protegiendo.
+        const quotaCheck = await checkStorageQuota(spaceId, file.size);
+        if (!quotaCheck.allowed) {
+          setFeedback({ kind: 'error', message: quotaCheck.error });
+          return;
+        }
+
         const supabase = getSupabaseBrowserClient();
         const path = `${spaceId}/${crypto.randomUUID()}-${file.name}`;
 

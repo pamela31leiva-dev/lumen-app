@@ -7,6 +7,7 @@ import { getBudgets } from '@/actions/budgets';
 import { getCategoryFiscalTags } from '@/actions/fiscal';
 import { listNotificationChannels } from '@/actions/notification-channels';
 import { getAlternativeAssets } from '@/actions/assets';
+import { checkSpaceIsPro } from '@/actions/plan-limits';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -77,7 +78,9 @@ export default async function SettingsPage() {
   const canManage = canManageSpace(activeSpace.role);
   // Monetizacion asimetrica: solo los espacios de Negocio sin Pro pierden la
   // exportacion para contadores. Personal/Familiar/Proyecto siempre la tienen.
-  const exportRequiresPro = activeSpace.type === 'business' && !activeSpace.isPro;
+  // Fuente unica de verdad (Bloque P9): ver comentario homologo en executive-board/page.tsx.
+  const isSpacePro = await checkSpaceIsPro(activeSpace.id);
+  const exportRequiresPro = activeSpace.type === 'business' && !isSpacePro;
 
   return (
     <main className="min-h-screen bg-obsidian text-stone-100">

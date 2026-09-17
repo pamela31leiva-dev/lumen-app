@@ -4,6 +4,7 @@ import { Fragment, useRef, useState, useTransition, type DragEvent } from 'react
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
 import { processUblInvoiceUpload, type UblInvoiceUploadResult } from '@/actions/invoices';
+import { checkStorageQuota } from '@/actions/plan-limits';
 import { cn } from '@/lib/utils';
 
 interface XmlInvoiceUploadModalProps {
@@ -43,6 +44,12 @@ export function XmlInvoiceUploadModal({ spaceId }: XmlInvoiceUploadModalProps) {
     setResult(null);
     startTransition(async () => {
       try {
+        const quotaCheck = await checkStorageQuota(spaceId, file.size);
+        if (!quotaCheck.allowed) {
+          setResult({ success: false, error: quotaCheck.error });
+          return;
+        }
+
         const supabase = getSupabaseBrowserClient();
         const path = `${spaceId}/${crypto.randomUUID()}-${file.name}`;
 

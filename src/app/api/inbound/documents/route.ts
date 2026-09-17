@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { getSupabaseServiceRoleClient } from '@/infrastructure/supabase/service-role-client';
 import { processCaptureWithClient } from '@/actions/capture-core';
 import { processUblInvoiceWithClient } from '@/actions/invoice-core';
+import { checkStorageQuotaWithClient } from '@/actions/plan-limits-core';
 import { reportError } from '@/lib/telemetry/reporter';
 
 /**
@@ -115,6 +116,11 @@ export async function POST(request: Request) {
       }
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
         return NextResponse.json({ error: `El archivo pesa mas de ${MAX_FILE_SIZE_MB}MB.` }, { status: 413 });
+      }
+
+      const quotaCheck = await checkStorageQuotaWithClient(supabase, channel.space_id, file.size);
+      if (!quotaCheck.allowed) {
+        return NextResponse.json({ error: quotaCheck.error }, { status: 413 });
       }
 
       const originalFilename = file.name || 'documento';

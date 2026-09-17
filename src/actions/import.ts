@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
+import { checkMonthlyRecordLimitWithClient } from '@/actions/plan-limits-core';
 import { buildImportPreview } from '@/domain/import/parse-row';
 import { computeRowHash } from '@/domain/import/hash';
 import { fetchActiveMerchantRules } from '@/actions/merchant-rules-core';
@@ -108,6 +109,16 @@ export async function processBulkImport(
 
   if (rows.length === 0) {
     return { success: false, error: 'El archivo no tiene filas para importar.' };
+  }
+
+  // Enforcement de plan (Bloque P9): las filas importadas nacen
+  // pending_confirmation (no cuentan solas todavia, ver comentario mas
+  // abajo), pero si el espacio YA esta en su limite mensual de confirmados,
+  // no tiene sentido dejar entrar un lote nuevo que no se va a poder
+  // confirmar de todas formas.
+  const recordLimitCheck = await checkMonthlyRecordLimitWithClient(supabase, spaceId);
+  if (!recordLimitCheck.allowed) {
+    return { success: false, error: recordLimitCheck.error };
   }
 
   const { data: space, error: spaceError } = await supabase
