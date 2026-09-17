@@ -6,6 +6,7 @@ import { deleteBudget, setBudget, type BudgetSummary } from '@/actions/budgets';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { formatMoney } from '@/lib/utils';
 import { CURRENCY_OPTIONS } from '@/domain/currency';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { CategoryOption } from '@/domain/types/dashboard';
 
 interface BudgetsManagerProps {
@@ -81,7 +82,18 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
 
   return (
     <div className="flex flex-col gap-3">
-      {budgets.length === 0 && !showForm && <p className="text-xs text-stone-500">Sin presupuestos todavia.</p>}
+      {budgets.length === 0 &&
+        !showForm &&
+        (canEdit ? (
+          <EmptyState
+            title="Sin presupuestos todavia"
+            description="Fija un monto mensual por categoria de gasto para saber, mes a mes, si te estas pasando."
+            actionLabel="+ Crear el primero"
+            onAction={() => setShowForm(true)}
+          />
+        ) : (
+          <p className="text-xs text-stone-500">Sin presupuestos todavia.</p>
+        ))}
 
       {budgets.map((budget) => (
         <div key={budget.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
@@ -163,9 +175,11 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
             </div>
           </div>
         ) : (
-          <button type="button" onClick={() => setShowForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
-            + Nuevo presupuesto
-          </button>
+          budgets.length > 0 && (
+            <button type="button" onClick={() => setShowForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
+              + Nuevo presupuesto
+            </button>
+          )
         ))}
     </div>
   );

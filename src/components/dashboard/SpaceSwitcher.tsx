@@ -88,7 +88,7 @@ export function SpaceSwitcher({ spaces, activeSpaceId }: SpaceSwitcherProps) {
         {open && (
           <div
             role="listbox"
-            className="animate-fade-scale-in absolute left-0 top-[calc(100%+8px)] z-50 min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-elevated/95 shadow-2xl shadow-black/60 backdrop-blur-xl ring-1 ring-white/5"
+            className="animate-fade-scale-in absolute right-0 z-50 mt-2 min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-elevated/95 shadow-2xl shadow-black/60 backdrop-blur-xl ring-1 ring-white/5"
           >
             <p className="border-b border-white/5 px-4 pb-2 pt-3 text-[10px] font-medium uppercase tracking-[0.14em] text-stone-500">
               Tus espacios

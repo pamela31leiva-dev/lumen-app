@@ -1,7 +1,8 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
-import type { FiscalSummary, TaxTreatment } from '@/domain/types/fiscal';
+import { suggestTaxTreatment, type FiscalSummary, type TaxTreatment } from '@/domain/types/fiscal';
+import type { SpaceType } from '@/domain/types/dashboard';
 
 interface FiscalSummaryJson {
   year: number;
@@ -129,6 +130,50 @@ export async function setCategoryFiscalTag(
   }
 
   return { success: true };
+}
+
+/**
+ * Aplica la sugerencia estandar (ver suggestTaxTreatment) a toda categoria
+ * de este espacio que TODAVIA no tenga clasificacion -- nunca pisa una
+ * eleccion que la persona ya hizo a mano, sin importar si coincide o no con
+ * lo que la sugerencia diria hoy. Un solo insert por lote en vez de N
+ * llamadas a setCategoryFiscalTag.
+ */
+export async function applyStandardFiscalTags(spaceId: string): Promise<{ success: true; appliedCount: number } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'No autorizado' };
+
+  const [{ data: space }, { data: categories }, { data: existingTags }] = await Promise.all([
+    supabase.from('spaces').select('type').eq('id', spaceId).single(),
+    supabase.from('categories').select('id, kind').or(`space_id.eq.${spaceId},space_id.is.null`),
+    supabase.from('category_fiscal_tags').select('category_id').eq('space_id', spaceId),
+  ]);
+
+  const spaceType = (space?.type as SpaceType | undefined) ?? 'personal';
+  const alreadyTagged = new Set((existingTags ?? []).map((t) => t.category_id));
+
+  const toInsert = (categories ?? [])
+    .filter((c) => !alreadyTagged.has(c.id))
+    .map((c) => ({
+      space_id: spaceId,
+      category_id: c.id,
+      tax_treatment: suggestTaxTreatment(c.kind as 'income' | 'expense', spaceType),
+      created_by: user.id,
+    }));
+
+  if (toInsert.length === 0) return { success: true, appliedCount: 0 };
+
+  const { error } = await supabase.from('category_fiscal_tags').insert(toInsert);
+  if (error) {
+    console.error('Error al aplicar las sugerencias fiscales estandar:', error);
+    return { success: false, error: 'No se pudieron aplicar las sugerencias. Intenta de nuevo.' };
+  }
+
+  return { success: true, appliedCount: toInsert.length };
 }
 
 /** Quita la etiqueta fiscal de una categoria (vuelve a quedar "sin clasificar"). RLS exige owner/admin. */

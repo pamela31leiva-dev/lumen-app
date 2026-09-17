@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createInboundChannel, revokeInboundChannel, type InboundChannelSummary } from '@/actions/inbound-channels';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 interface InboundChannelsManagerProps {
   spaceId: string;
@@ -75,7 +76,18 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
         Reenvia correos o conecta un webhook (Zapier, Make) a esta URL para que las facturas lleguen solas al Centro de Ingesta.
       </p>
 
-      {channels.length === 0 && !showCreateForm && <p className="text-xs text-stone-500">Sin canales todavia.</p>}
+      {channels.length === 0 &&
+        !showCreateForm &&
+        (canManage ? (
+          <EmptyState
+            title="Sin canales todavia"
+            description="Genera un token para reenviar correos o conectar un webhook (Zapier, Make) y que las facturas lleguen solas."
+            actionLabel="+ Generar el primero"
+            onAction={() => setShowCreateForm(true)}
+          />
+        ) : (
+          <p className="text-xs text-stone-500">Sin canales todavia.</p>
+        ))}
 
       {channels.map((channel) => (
         <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
@@ -150,9 +162,14 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
             </button>
           </div>
         ) : (
-          <button type="button" onClick={() => setShowCreateForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
-            + Nuevo canal
-          </button>
+          // El "+ Nuevo canal" corto solo tiene sentido cuando ya hay al
+          // menos uno -- con la lista vacia, el boton del EmptyState de
+          // arriba ya cumple ese rol; mostrar los dos juntos era redundante.
+          channels.length > 0 && (
+            <button type="button" onClick={() => setShowCreateForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
+              + Nuevo canal
+            </button>
+          )
         )
       )}
     </div>

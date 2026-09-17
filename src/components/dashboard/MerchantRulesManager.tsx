@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createMerchantRule, deleteMerchantRule, updateMerchantRule, type MerchantRuleInput, type MerchantRuleSummary } from '@/actions/merchant-rules';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { FOLDER_LABEL, FOLDER_ORDER, type Folder } from '@/domain/folders';
 import type { CategoryOption } from '@/domain/types/dashboard';
 
@@ -192,9 +193,18 @@ export function MerchantRulesManager({ spaceId, rules, categories, accounts, can
 
   return (
     <div className="flex flex-col gap-3">
-      {rules.length === 0 && !showAddForm && (
-        <p className="text-xs text-stone-500">Sin reglas todavia. Crea una para que un comercio recurrente se categorice solo.</p>
-      )}
+      {rules.length === 0 &&
+        !showAddForm &&
+        (canEdit ? (
+          <EmptyState
+            title="Sin reglas todavia"
+            description="Crea una para que un comercio recurrente (ej. tu supermercado de siempre) se categorice solo la proxima vez."
+            actionLabel="+ Crear la primera"
+            onAction={() => setShowAddForm(true)}
+          />
+        ) : (
+          <p className="text-xs text-stone-500">Sin reglas todavia.</p>
+        ))}
 
       {rules.map((rule) =>
         editingId === rule.id ? (
@@ -256,9 +266,11 @@ export function MerchantRulesManager({ spaceId, rules, categories, accounts, can
             onCancel={() => setShowAddForm(false)}
           />
         ) : (
-          <button type="button" onClick={() => setShowAddForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
-            + Nueva regla
-          </button>
+          rules.length > 0 && (
+            <button type="button" onClick={() => setShowAddForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
+              + Nueva regla
+            </button>
+          )
         ))}
     </div>
   );

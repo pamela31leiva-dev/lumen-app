@@ -11,6 +11,7 @@ import {
   type NotificationChannelType,
 } from '@/actions/notification-channels';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 interface NotificationChannelsManagerProps {
   spaceId: string;
@@ -106,7 +107,18 @@ export function NotificationChannelsManager({ spaceId, channels, canManage }: No
 
   return (
     <div className="flex flex-col gap-3">
-      {channels.length === 0 && !showForm && <p className="text-xs text-stone-500">Sin canales todavia.</p>}
+      {channels.length === 0 &&
+        !showForm &&
+        (canManage ? (
+          <EmptyState
+            title="Sin canales todavia"
+            description="Conecta un webhook o tu bot de Telegram para recibir el aviso de una factura por vencer tambien fuera de la app."
+            actionLabel="+ Conectar el primero"
+            onAction={() => setShowForm(true)}
+          />
+        ) : (
+          <p className="text-xs text-stone-500">Sin canales todavia.</p>
+        ))}
 
       {channels.map((channel) => (
         <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
@@ -191,9 +203,11 @@ export function NotificationChannelsManager({ spaceId, channels, canManage }: No
             </div>
           </div>
         ) : (
-          <button type="button" onClick={() => setShowForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
-            + Nuevo canal
-          </button>
+          channels.length > 0 && (
+            <button type="button" onClick={() => setShowForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
+              + Nuevo canal
+            </button>
+          )
         ))}
     </div>
   );

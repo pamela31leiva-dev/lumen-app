@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createAlternativeAsset, deleteAlternativeAsset } from '@/actions/assets';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { CURRENCY_OPTIONS } from '@/domain/currency';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatMoney } from '@/lib/utils';
 import type { AlternativeAssetSummary, AlternativeAssetType } from '@/domain/types/dashboard';
 
@@ -99,7 +100,18 @@ export function AlternativeAssetsManager({ spaceId, assets, totalBase, baseCurre
 
   return (
     <div className="flex flex-col gap-3">
-      {assets.length === 0 && !showForm && <p className="text-xs text-stone-500">Sin activos alternativos todavia.</p>}
+      {assets.length === 0 &&
+        !showForm &&
+        (canEdit ? (
+          <EmptyState
+            title="Sin activos alternativos todavia"
+            description="Registra tu primera inversion, criptoactivo o bien patrimonial y sigue su valor por separado de tus cuentas."
+            actionLabel="+ Registrar el primero"
+            onAction={() => setShowForm(true)}
+          />
+        ) : (
+          <p className="text-xs text-stone-500">Sin activos alternativos todavia.</p>
+        ))}
 
       {assets.map((asset) => (
         <div key={asset.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
@@ -210,9 +222,11 @@ export function AlternativeAssetsManager({ spaceId, assets, totalBase, baseCurre
             </div>
           </div>
         ) : (
-          <button type="button" onClick={() => setShowForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
-            + Nuevo activo
-          </button>
+          assets.length > 0 && (
+            <button type="button" onClick={() => setShowForm(true)} className="self-start text-xs font-medium text-gold hover:underline">
+              + Nuevo activo
+            </button>
+          )
         ))}
     </div>
   );

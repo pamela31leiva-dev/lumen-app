@@ -187,7 +187,14 @@ export default async function SettingsPage() {
             Marca cada categoria como gravado/exento/no gravado (ingresos) o deducible/no deducible (gastos) -- tu lo
             sabes, Lumen solo suma. Alimenta el Resumen Fiscal del Panorama y el Paquete Contable exportable.
           </p>
-          <FiscalCategoriesManager spaceId={activeSpace.id} categories={categories} tags={fiscalTags} canEdit={canEdit} canManage={canManage} />
+          <FiscalCategoriesManager
+            spaceId={activeSpace.id}
+            spaceType={activeSpace.type}
+            categories={categories}
+            tags={fiscalTags}
+            canEdit={canEdit}
+            canManage={canManage}
+          />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
