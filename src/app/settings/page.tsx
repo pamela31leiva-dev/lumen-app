@@ -6,6 +6,7 @@ import { listInboundChannels } from '@/actions/inbound-channels';
 import { getBudgets } from '@/actions/budgets';
 import { getCategoryFiscalTags } from '@/actions/fiscal';
 import { listNotificationChannels } from '@/actions/notification-channels';
+import { getAlternativeAssets } from '@/actions/assets';
 import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
@@ -25,6 +26,8 @@ import { InboundChannelsManager } from '@/components/dashboard/InboundChannelsMa
 import { BudgetsManager } from '@/components/dashboard/BudgetsManager';
 import { FiscalCategoriesManager } from '@/components/dashboard/FiscalCategoriesManager';
 import { NotificationChannelsManager } from '@/components/dashboard/NotificationChannelsManager';
+import { CreateAccountForm } from '@/components/dashboard/CreateAccountForm';
+import { AlternativeAssetsManager } from '@/components/dashboard/AlternativeAssetsManager';
 import { AppFooter } from '@/components/AppFooter';
 import type { PlanTier } from '@/domain/types/dashboard';
 
@@ -51,6 +54,7 @@ export default async function SettingsPage() {
     budgets,
     fiscalTags,
     notificationChannels,
+    alternativeAssetsData,
   ] = await Promise.all([
     getSpaceMembers(activeSpace.id),
     getAccountBalances(activeSpace.id),
@@ -63,6 +67,7 @@ export default async function SettingsPage() {
     getBudgets(activeSpace.id),
     getCategoryFiscalTags(activeSpace.id),
     listNotificationChannels(activeSpace.id),
+    getAlternativeAssets(activeSpace.id, activeSpace.baseCurrency),
   ]);
 
   // RBAC (Bloque P4): mismo umbral que las politicas RLS (has_space_role) --
@@ -188,6 +193,23 @@ export default async function SettingsPage() {
         <section className="rounded-xl border border-white/10 bg-elevated p-5">
           <h2 className="mb-3 text-sm font-medium text-stone-200">Cuentas</h2>
           <BalancesGrid baseCurrency={balances.baseCurrency} accounts={balances.accounts} />
+          {canEdit && <CreateAccountForm spaceId={activeSpace.id} baseCurrency={activeSpace.baseCurrency} />}
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-elevated p-5">
+          <h2 className="mb-1 text-sm font-medium text-stone-200">Activos Alternativos</h2>
+          <p className="mb-3 text-xs text-stone-500">
+            Inversiones, criptoactivos y bienes patrimoniales que no son una cuenta transaccional -- se muestran aparte
+            del Patrimonio Neto de tus cuentas.
+          </p>
+          <AlternativeAssetsManager
+            spaceId={activeSpace.id}
+            assets={alternativeAssetsData.assets}
+            totalBase={alternativeAssetsData.totalBase}
+            baseCurrency={activeSpace.baseCurrency}
+            canEdit={canEdit}
+            canManage={canManage}
+          />
         </section>
 
         <section className="rounded-xl border border-white/10 bg-elevated p-5">

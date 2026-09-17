@@ -154,6 +154,23 @@ export interface IdentitySnapshot {
   topCategoryShare: number | null;
 }
 
+export type AlternativeAssetType = 'crypto' | 'stock' | 'real_estate' | 'vehicle' | 'other';
+
+/** Inversion, criptoactivo o bien patrimonial alternativo (Bloque P7). currentValue = quantity*unitValue, calculado siempre por Postgres. */
+export interface AlternativeAssetSummary {
+  id: string;
+  name: string;
+  assetType: AlternativeAssetType;
+  currency: string;
+  quantity: number;
+  unitValue: number;
+  currentValue: number;
+  /** currentValue convertido a la moneda base del espacio con la tasa mas reciente disponible; null si aun no hay ninguna tasa cacheada para ese par. */
+  currentValueBase: number | null;
+  valuationDate: string;
+  notes: string | null;
+}
+
 /** Miembro de un espacio para la vista de /settings. El nombre/correo solo es visible entre compania de espacio (ver 0004). */
 export interface SpaceMemberSummary {
   userId: string;

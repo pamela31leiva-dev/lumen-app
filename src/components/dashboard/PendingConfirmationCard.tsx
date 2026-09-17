@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmTransaction, moveTransactionToSpace, rejectPendingTransaction } from '@/actions/confirm';
+import { getExchangeRate } from '@/actions/currency';
 import { getReceiptSignedUrl } from '@/actions/dashboard';
 import { saveClassificationHint } from '@/actions/classification';
 import { getConfirmationInsight } from '@/actions/insights';
@@ -65,6 +66,8 @@ export function PendingConfirmationCard({
   const [amount, setAmount] = useState(String(transaction.amountOriginal));
   const [currency, setCurrency] = useState(transaction.currencyOriginal);
   const [exchangeRate, setExchangeRate] = useState('1');
+  const [isLookingUpRate, setIsLookingUpRate] = useState(false);
+  const [rateLookupNote, setRateLookupNote] = useState<string | null>(null);
   const [description, setDescription] = useState(transaction.description ?? '');
   const [date, setDate] = useState(transaction.transactionDate.slice(0, 10));
   // Simplicidad Absoluta: no mostrar moneda/tasa de cambio salvo que realmente aplique.
@@ -167,6 +170,30 @@ export function PendingConfirmationCard({
           setOptimisticOutcome((current) => (current?.kind === 'confirm' ? { ...current, message } : current));
         })
         .catch(() => {});
+    });
+  }
+
+  /**
+   * Reemplaza el "adivina tu la tasa" original por una consulta real (Bloque
+   * P7): getExchangeRate nunca inventa nada -- si no encuentra ni una tasa
+   * cacheada cercana, deja el campo tal cual para que la persona la escriba a
+   * mano, en vez de fallar en silencio con un numero falso.
+   */
+  function handleLookupRate() {
+    setRateLookupNote(null);
+    setIsLookingUpRate(true);
+    getExchangeRate(currency, baseCurrency, date).then((result) => {
+      setIsLookingUpRate(false);
+      if (!result.success) {
+        setRateLookupNote(result.error);
+        return;
+      }
+      setExchangeRate(String(result.data.rate));
+      setRateLookupNote(
+        result.data.isApprox
+          ? `Tasa aproximada del ${result.data.rateDate} (no habia una exacta para ${date}).`
+          : `Tasa de ${result.data.rateDate} encontrada.`,
+      );
     });
   }
 
@@ -570,14 +597,25 @@ export function PendingConfirmationCard({
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-stone-300">Tasa de cambio</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      value={exchangeRate}
+                      onChange={(e) => setExchangeRate(e.target.value)}
+                      className="w-full min-w-0 rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleLookupRate}
+                      disabled={isLookingUpRate || currency === baseCurrency}
+                      className="shrink-0 rounded-lg border border-white/10 px-2.5 py-2 text-xs text-stone-400 transition hover:border-gold/30 hover:text-gold disabled:opacity-50"
+                    >
+                      {isLookingUpRate ? '...' : 'Buscar'}
+                    </button>
+                  </div>
+                  {rateLookupNote && <p className="mt-1 text-[11px] text-stone-500">{rateLookupNote}</p>}
                 </div>
               </>
             ) : (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { deleteBudget, setBudget, type BudgetSummary } from '@/actions/budgets';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { formatMoney } from '@/lib/utils';
+import { CURRENCY_OPTIONS } from '@/domain/currency';
 import type { CategoryOption } from '@/domain/types/dashboard';
 
 interface BudgetsManagerProps {
@@ -29,6 +30,8 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
   const [showForm, setShowForm] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState(baseCurrency);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -49,7 +52,7 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
     }
 
     startTransition(async () => {
-      const result = await setBudget(spaceId, categoryId, parsed);
+      const result = await setBudget(spaceId, categoryId, parsed, currency);
       if (!result.success) {
         setError(result.error);
         return;
@@ -57,6 +60,8 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
       setShowForm(false);
       setCategoryId('');
       setAmount('');
+      setCurrency(baseCurrency);
+      setShowCurrencyPicker(false);
       router.refresh();
     });
   }
@@ -82,7 +87,12 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
         <div key={budget.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
           <span className="text-sm text-stone-200">{budget.categoryName}</span>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="amount text-sm text-stone-300">{formatMoney(budget.monthlyAmount, baseCurrency)}/mes</span>
+            <span className="amount text-sm text-stone-300">
+              {formatMoney(budget.monthlyAmount, budget.currency)}/mes
+              {budget.currency !== baseCurrency && (
+                <span className="ml-1 text-xs text-gold">({formatMoney(budget.monthlyAmountBase, baseCurrency)})</span>
+              )}
+            </span>
             {canManage && (
               <button
                 type="button"
@@ -124,6 +134,20 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
                 className="w-full rounded-lg border border-white/10 bg-elevated px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
+            {showCurrencyPicker ? (
+              <div className="w-full sm:w-36">
+                <label className="mb-1 block text-xs font-medium text-stone-300">Moneda</label>
+                <CustomSelect value={currency} onChange={setCurrency} options={CURRENCY_OPTIONS} />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowCurrencyPicker(true)}
+                className="text-xs text-stone-500 underline decoration-white/20 underline-offset-2 hover:text-stone-300 sm:mb-2.5"
+              >
+                ¿En otra moneda? Actualmente en {currency}
+              </button>
+            )}
             <div className="flex gap-2">
               <button type="button" onClick={() => setShowForm(false)} className="rounded-lg px-3 py-2 text-xs font-medium text-stone-400 hover:text-stone-200">
                 Cancelar
