@@ -3,7 +3,9 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { bulkDeleteTransactions, bulkUpdateCategory, deleteTransaction } from '@/actions/confirm';
+import { updateTransactionTaxTreatment } from '@/actions/fiscal';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { EXPENSE_TAX_TREATMENTS, INCOME_TAX_TREATMENTS, TAX_TREATMENT_LABEL, type TaxTreatment } from '@/domain/types/fiscal';
 import type { CategoryOption, TransactionHistoryItem } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
 
@@ -13,11 +15,24 @@ const TYPE_LABEL: Record<TransactionHistoryItem['type'], string> = {
   transfer: 'Transferencia',
 };
 
+const NONE_VALUE = '__none__';
+
+/** Favorable (reduce base gravable) en gold; neutral/desfavorable en tono apagado; sin clasificar punteado. */
+const TAX_PILL_STYLE: Record<TaxTreatment, string> = {
+  gravado: 'border-gold/30 bg-gold/10 text-gold',
+  exento: 'border-growth/30 bg-growth/10 text-growth',
+  no_gravado: 'border-white/10 bg-white/5 text-stone-400',
+  deducible: 'border-growth/30 bg-growth/10 text-growth',
+  no_deducible: 'border-white/10 bg-white/5 text-stone-400',
+};
+
 interface TransactionHistoryListProps {
   spaceId: string;
   items: TransactionHistoryItem[];
   categories: CategoryOption[];
   canDelete: boolean;
+  /** RBAC (Bloque P4): owner/admin/editor -- ajustar la clasificacion fiscal de un movimiento puntual (mismo umbral que transactions_update_editor). */
+  canEdit: boolean;
 }
 
 /**
@@ -30,11 +45,13 @@ interface TransactionHistoryListProps {
  * vez -- elimina la friccion de corregir movimiento por movimiento cuando la
  * IA le puso la misma categoria equivocada a varios.
  */
-export function TransactionHistoryList({ spaceId, items, categories, canDelete }: TransactionHistoryListProps) {
+export function TransactionHistoryList({ spaceId, items, categories, canDelete, canEdit }: TransactionHistoryListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingTaxId, setEditingTaxId] = useState<string | null>(null);
+  const [taxUpdatingId, setTaxUpdatingId] = useState<string | null>(null);
   // Optimista: la fila desaparece de inmediato al confirmar el borrado, sin
   // esperar el round-trip de router.refresh() (que sigue pasando en segundo
   // plano para que la lista real del servidor quede al dia).
@@ -61,6 +78,21 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete }
         return;
       }
       setConfirmingId(null);
+      router.refresh();
+    });
+  }
+
+  function handleTaxTreatmentChange(id: string, value: string) {
+    setError(null);
+    setTaxUpdatingId(id);
+    const nextValue = value === NONE_VALUE ? null : (value as TaxTreatment);
+    updateTransactionTaxTreatment(id, spaceId, nextValue).then((result) => {
+      setTaxUpdatingId(null);
+      setEditingTaxId(null);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
     });
   }
@@ -220,6 +252,40 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete }
                     ))}
                   </div>
                 )}
+                {/* Un transfer no tiene categoria (chk_transfer_shape, 0001) y
+                    por lo tanto tampoco Clasificacion Tributaria -- se omite
+                    por completo en vez de mostrar un pildora vacia. */}
+                {item.type !== 'transfer' &&
+                  (editingTaxId === item.id ? (
+                    <div className="mt-1.5 w-40">
+                      <CustomSelect
+                        value={item.taxTreatment ?? ''}
+                        onChange={(v) => handleTaxTreatmentChange(item.id, v)}
+                        disabled={taxUpdatingId === item.id}
+                        placeholder="Sin clasificar"
+                        options={[
+                          { value: NONE_VALUE, label: 'Sin clasificar' },
+                          ...(item.type === 'income' ? INCOME_TAX_TREATMENTS : EXPENSE_TAX_TREATMENTS).map((t) => ({
+                            value: t,
+                            label: TAX_TREATMENT_LABEL[t],
+                          })),
+                        ]}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!canEdit}
+                      onClick={() => setEditingTaxId(item.id)}
+                      className={cn(
+                        'mt-1.5 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium transition',
+                        item.taxTreatment ? TAX_PILL_STYLE[item.taxTreatment] : 'border-dashed border-white/15 text-stone-600',
+                        canEdit && 'hover:brightness-125',
+                      )}
+                    >
+                      {item.taxTreatment ? TAX_TREATMENT_LABEL[item.taxTreatment] : 'Sin clasificar'}
+                    </button>
+                  ))}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-3">

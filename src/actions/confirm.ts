@@ -1,6 +1,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
+import { getCategoryTaxTreatment } from '@/actions/fiscal';
 import type { ConfirmTransactionDTO, ConfirmTransactionResult } from '@/domain/types/capture';
 
 type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
@@ -70,13 +71,19 @@ export async function confirmTransaction(payload: ConfirmTransactionDTO): Promis
     return { success: false, error: 'Selecciona la cuenta destino.' };
   }
 
+  const categoryId = payload.type === 'transfer' ? null : (payload.category_id ?? null);
+  // Herencia Automatica (Bloque P8): la categoria elegida ya tiene una
+  // Clasificacion Tributaria en este espacio? El movimiento la hereda al
+  // confirmarse -- ver domain/types/fiscal.ts y 0034_p8_transaction_tax_treatment.
+  const taxTreatment = await getCategoryTaxTreatment(supabase, payload.space_id, categoryId);
+
   const { data: transaction, error } = await supabase
     .from('transactions')
     .update({
       type: payload.type,
       account_id: accountId,
       destination_account_id: payload.type === 'transfer' ? (payload.destination_account_id ?? null) : null,
-      category_id: payload.type === 'transfer' ? null : (payload.category_id ?? null),
+      category_id: categoryId,
       amount_original: payload.amount_original,
       currency_original: payload.currency_original,
       exchange_rate: payload.exchange_rate,
@@ -86,6 +93,7 @@ export async function confirmTransaction(payload: ConfirmTransactionDTO): Promis
       is_business: payload.is_business ?? false,
       life_domain: payload.is_business ? null : payload.life_domain ?? null,
       withholding_tax_amount: payload.withholding_tax_amount ?? null,
+      tax_treatment: taxTreatment,
       status: 'confirmed',
       confirmed_at: new Date().toISOString(),
       confirmed_by: user.id,
@@ -191,6 +199,13 @@ export async function deleteTransaction(
  * movimientos CONFIRMADOS de una sola vez, en vez de abrir cada uno por
  * separado. category_id=null es valido (quita la categoria). Nunca toca
  * pendientes -- eso ya se corrige en el flujo normal de confirmacion.
+ *
+ * Bloque P8: cambiar la categoria tambien re-hereda la Clasificacion
+ * Tributaria de la categoria NUEVA para los movimientos afectados -- igual
+ * que confirmTransaction, es la misma categoria eligiendo el mismo
+ * tratamiento, sin importar si antes tenian uno distinto (heredado o
+ * ajustado a mano): al recategorizar a proposito, el criterio de la
+ * categoria nueva es lo que la persona esta pidiendo.
  */
 export async function bulkUpdateCategory(
   transactionIds: string[],
@@ -209,9 +224,11 @@ export async function bulkUpdateCategory(
     return { success: false, error: 'Selecciona al menos un movimiento.' };
   }
 
+  const taxTreatment = await getCategoryTaxTreatment(supabase, spaceId, categoryId);
+
   const { error, count } = await supabase
     .from('transactions')
-    .update({ category_id: categoryId }, { count: 'exact' })
+    .update({ category_id: categoryId, tax_treatment: taxTreatment }, { count: 'exact' })
     .eq('space_id', spaceId)
     .eq('status', 'confirmed')
     .in('id', transactionIds);

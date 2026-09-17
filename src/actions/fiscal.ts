@@ -4,6 +4,26 @@ import { getSupabaseServerClient } from '@/infrastructure/supabase/server';
 import { suggestTaxTreatment, type FiscalSummary, type TaxTreatment } from '@/domain/types/fiscal';
 import type { SpaceType } from '@/domain/types/dashboard';
 
+type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+
+/**
+ * Lectura compartida por confirmTransaction y bulkUpdateCategory
+ * (actions/confirm.ts, Bloque P8): la categoria elegida ya tiene un
+ * tratamiento fiscal en este espacio? Si es asi, el movimiento lo hereda al
+ * confirmarse/recategorizarse -- null si la categoria no esta clasificada
+ * (el movimiento simplemente queda "sin clasificar", nunca se inventa nada).
+ */
+export async function getCategoryTaxTreatment(supabase: ServerClient, spaceId: string, categoryId: string | null): Promise<TaxTreatment | null> {
+  if (!categoryId) return null;
+  const { data } = await supabase
+    .from('category_fiscal_tags')
+    .select('tax_treatment')
+    .eq('space_id', spaceId)
+    .eq('category_id', categoryId)
+    .maybeSingle();
+  return (data?.tax_treatment as TaxTreatment | undefined) ?? null;
+}
+
 interface FiscalSummaryJson {
   year: number;
   income_gravado: number;
@@ -104,7 +124,16 @@ export async function getCategoryFiscalTags(spaceId: string): Promise<CategoryFi
   return (data ?? []).map((row) => ({ id: row.id, categoryId: row.category_id, taxTreatment: row.tax_treatment as TaxTreatment }));
 }
 
-/** Crea o reemplaza la etiqueta fiscal de una categoria (una fila por espacio+categoria). */
+/**
+ * Crea o reemplaza la etiqueta fiscal de una categoria (una fila por
+ * espacio+categoria). Bloque P8: tambien clasifica de una vez todo movimiento
+ * CONFIRMADO de esa categoria que siga "sin clasificar" (tax_treatment null)
+ * -- sin esto, asignarle una clasificacion a una categoria por primera vez
+ * dejaria todo su historico sin heredarla, contradiciendo "sin requerir
+ * accion manual adicional". Nunca toca un movimiento que YA tiene su propio
+ * tratamiento (heredado antes o ajustado a mano) -- eso solo lo cambia la
+ * persona, movimiento por movimiento, desde el historial.
+ */
 export async function setCategoryFiscalTag(
   spaceId: string,
   categoryId: string,
@@ -128,6 +157,53 @@ export async function setCategoryFiscalTag(
     console.error('Error al guardar la etiqueta fiscal:', error);
     return { success: false, error: 'No se pudo guardar la clasificacion fiscal.' };
   }
+
+  const { error: propagateError } = await supabase
+    .from('transactions')
+    .update({ tax_treatment: taxTreatment })
+    .eq('space_id', spaceId)
+    .eq('category_id', categoryId)
+    .eq('status', 'confirmed')
+    .is('tax_treatment', null);
+  if (propagateError) {
+    // La etiqueta de la categoria ya quedo guardada (lo importante); esto
+    // solo hace mas lento que el historico viejo se ponga al dia. No falla
+    // la operacion completa por un problema secundario.
+    console.error('Error al heredar la clasificacion a movimientos existentes:', propagateError);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Ajuste puntual (Bloque P8): la persona corrige el tratamiento fiscal de UN
+ * movimiento especifico desde el historial, sin tocar su categoria ni la
+ * clasificacion general de esa categoria para el resto del espacio. null
+ * vuelve a dejarlo "sin clasificar".
+ */
+export async function updateTransactionTaxTreatment(
+  transactionId: string,
+  spaceId: string,
+  taxTreatment: TaxTreatment | null,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) return { success: false, error: 'No autorizado' };
+
+  const { error, count } = await supabase
+    .from('transactions')
+    .update({ tax_treatment: taxTreatment }, { count: 'exact' })
+    .eq('id', transactionId)
+    .eq('space_id', spaceId);
+
+  if (error) {
+    console.error('Error al ajustar la clasificacion fiscal del movimiento:', error);
+    return { success: false, error: 'No se pudo ajustar la clasificacion fiscal.' };
+  }
+  if (!count) return { success: false, error: 'No tienes permiso para editar este movimiento.' };
 
   return { success: true };
 }

@@ -1,4 +1,5 @@
 import type { CaptureSource, RecordStatus, TransactionType } from '@/domain/types/capture';
+import type { TaxTreatment } from '@/domain/types/fiscal';
 
 export type SpaceType = 'personal' | 'family' | 'business' | 'project';
 
@@ -92,6 +93,8 @@ export interface TransactionHistoryItem {
   isBusiness: boolean;
   /** Carpeta dentro de lo no-negocio: Personal (null)/Familiar/Salud -- ver life_domain en AiExtractionResult. */
   lifeDomain: 'personal' | 'familiar' | 'salud' | null;
+  /** Heredada de la categoria al confirmar, ajustable por movimiento (Bloque P8) -- null en transferencias o si la categoria no esta clasificada. */
+  taxTreatment: TaxTreatment | null;
 }
 
 /** Una entrada del ranking "top categoria" del Resumen de Impacto. */

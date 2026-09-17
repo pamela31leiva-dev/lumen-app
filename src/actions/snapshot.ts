@@ -346,6 +346,11 @@ export async function getExecutiveBoardSnapshot(
     tags: Array.isArray(row.tags) ? row.tags : [],
     isBusiness: Boolean(row.is_business),
     lifeDomain: row.life_domain,
+    // El snapshot atomico (get_executive_board_snapshot) no trae tax_treatment
+    // para esta lista liviana -- RecentActivityCard nunca muestra la pildora
+    // fiscal (eso vive en TransactionHistoryList, con su propia consulta que
+    // si lo selecciona). null aqui es exacto, no un placeholder que oculte un dato real.
+    taxTreatment: null,
   }));
 
   const recurringIncomes: RecurringIncomeSummary[] = (data.recurring_incomes ?? []).map((row) => ({

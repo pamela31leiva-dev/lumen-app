@@ -83,13 +83,12 @@ export async function getExportDataset(
     { data: accountRows, error: accountsError },
     { data: billRows, error: billsError },
     { data: openingBalances },
-    { data: fiscalTagRows },
   ] = await Promise.all([
     supabase.from('spaces').select('name, base_currency').eq('id', spaceId).single(),
     supabase
       .from('transactions')
       .select(
-        'type, description, transaction_date, amount_base, withholding_tax_amount, category_id, category:categories(name, kind), account:accounts!transactions_account_id_fkey(name), receipt:receipts(cufe)',
+        'type, description, transaction_date, amount_base, withholding_tax_amount, tax_treatment, category:categories(name, kind), account:accounts!transactions_account_id_fkey(name), receipt:receipts(cufe)',
       )
       .eq('space_id', spaceId)
       .eq('status', 'confirmed')
@@ -103,7 +102,7 @@ export async function getExportDataset(
           transaction_date: string;
           amount_base: number;
           withholding_tax_amount: number | null;
-          category_id: string | null;
+          tax_treatment: string | null;
           category: { name: string; kind: 'income' | 'expense' } | null;
           account: { name: string } | null;
           receipt: { cufe: string | null } | null;
@@ -120,7 +119,6 @@ export async function getExportDataset(
       .eq('space_id', spaceId)
       .order('due_date', { ascending: true }),
     supabase.from('accounts').select('name, opening_balance').eq('space_id', spaceId),
-    supabase.from('category_fiscal_tags').select('category_id, tax_treatment').eq('space_id', spaceId),
   ]);
 
   if (spaceError || !space) {
@@ -134,7 +132,6 @@ export async function getExportDataset(
   if (billsError) console.error('Error al leer facturas para exportacion:', billsError);
 
   const openingByName = new Map((openingBalances ?? []).map((a) => [a.name, Number(a.opening_balance)]));
-  const taxTreatmentByCategoryId = new Map((fiscalTagRows ?? []).map((row) => [row.category_id, row.tax_treatment]));
 
   return {
     spaceName: space.name,
@@ -149,7 +146,12 @@ export async function getExportDataset(
       accountName: row.account?.name ?? null,
       description: row.description,
       amountBase: Number(row.amount_base),
-      taxTreatment: row.category_id ? (taxTreatmentByCategoryId.get(row.category_id) ?? null) : null,
+      // Bloque P8: el tratamiento fiscal vive en la propia transaccion
+      // (heredado al confirmar, ajustable por movimiento) -- ya no se
+      // resuelve via un JOIN en vivo a category_fiscal_tags, que hubiera
+      // reclasificado silenciosamente movimientos viejos si la categoria
+      // cambiaba de etiqueta despues.
+      taxTreatment: row.tax_treatment,
       withholdingTaxAmount: row.withholding_tax_amount !== null ? Number(row.withholding_tax_amount) : null,
       cufe: row.receipt?.cufe ?? null,
     })),

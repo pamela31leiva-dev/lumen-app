@@ -1,5 +1,5 @@
 import { getCategories, getTransactionHistory } from '@/actions/dashboard';
-import { canManageSpace } from '@/domain/permissions';
+import { canEditSpace, canManageSpace } from '@/domain/permissions';
 import { requireActiveSpace } from '@/lib/active-space';
 import { AppNav } from '@/components/dashboard/AppNav';
 import { TransactionHistoryList } from '@/components/dashboard/TransactionHistoryList';
@@ -21,6 +21,7 @@ export default async function MovimientosPage() {
     getCategories(activeSpace.id),
   ]);
 
+  const canEdit = canEditSpace(activeSpace.role);
   const canManage = canManageSpace(activeSpace.role);
 
   return (
@@ -46,6 +47,7 @@ export default async function MovimientosPage() {
               items={transactionHistory}
               categories={categories}
               canDelete={canManage}
+              canEdit={canEdit}
             />
           </div>
         </section>

@@ -233,6 +233,7 @@ export default async function SettingsPage() {
               items={transactionHistory}
               categories={categories}
               canDelete={canManage}
+              canEdit={canEdit}
             />
           </div>
         </section>
