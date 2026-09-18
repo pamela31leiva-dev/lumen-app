@@ -117,6 +117,9 @@ body {
    de color solido (bg-wealth, bg-red-600, bg-gold) que ya contrastan bien
    en cualquier tema. */
 
+.text-stone-50 {
+  color: #1c1917;
+}
 .text-stone-100 {
   color: #1c1917;
 }
@@ -234,4 +237,93 @@ body {
 
 .text-sky-400 {
   color: #0369a1;
+}
+
+/* ============================================================
+   Arquitectura de Movimiento -- microinteracciones de sistema
+   ============================================================
+   Dos reglas GLOBALES a proposito, en vez de tocar cada boton/tarjeta uno
+   por uno: igual estrategia que el remapeo de colores de mas arriba, un
+   solo lugar que le da "peso tactil" a CADA boton clickeable de la app y
+   "profundidad" a cada tarjeta que la adopte via .card-surface. Los
+   resortes reales (Framer Motion) viven en componentes que de verdad
+   entran/salen del DOM -- ver lib/motion.ts -- esto cubre lo que CSS puro
+   ya resuelve mejor: un boton no se "monta", solo reacciona al toque. */
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):active {
+    transform: scale(0.97);
+  }
+  button:not(:disabled) {
+    transition: transform 0.12s ease-out;
+  }
+}
+
+/* Tarjeta con profundidad real (Glassmorphism sobrio, no literal): sombra
+   en dos capas -- una corta y nitida pegada al borde, otra larga y difusa
+   que la "levanta" del fondo -- mas un filo superior translucido que
+   sugiere una superficie de vidrio sin necesitar blur pesado sobre
+   contenido financiero (que SI debe leerse siempre nitido). El lift al
+   hover es sutil (2px) -- suficiente para sentirse viva, no un boton. */
+.card-surface {
+  position: relative;
+  box-shadow:
+    0 1px 2px rgb(28 25 23 / 0.04),
+    0 12px 24px -8px rgb(28 25 23 / 0.08),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.6);
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  .card-surface:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 4px rgb(28 25 23 / 0.05),
+      0 20px 32px -10px rgb(28 25 23 / 0.12),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.7);
+  }
+}
+
+/* Command Center (CommandConsole): brillo de borde animado al enfocar --
+   un halo de luz que "respira" en vez de un simple cambio de color de
+   borde. El pseudo-elemento vive detras del contenido (z-index -1) y solo
+   se hace visible con :focus-within, para no competir nunca con la
+   legibilidad del texto/monto que se esta escribiendo. */
+.command-glow {
+  position: relative;
+}
+.command-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--glow-angle, 0deg), rgb(141 108 27 / 0.5), rgb(47 111 94 / 0.35), rgb(141 108 27 / 0.5));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+.command-glow:focus-within::before {
+  opacity: 1;
+  animation: command-glow-spin 3.5s linear infinite;
+}
+@property --glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes command-glow-spin {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .command-glow:focus-within::before {
+    animation: none;
+  }
 }

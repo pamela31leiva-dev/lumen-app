@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getMonthlyReport, type MonthlyReport } from '@/actions/reports';
+import { Modal } from '@/components/ui/Modal';
 import { cn, formatMoney } from '@/lib/utils';
 
 interface MonthlyReportModalProps {
@@ -63,9 +64,7 @@ export function MonthlyReportModal({ spaceId, baseCurrency }: MonthlyReportModal
         Ver reporte mensual
       </button>
 
-      {open && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-white/10 bg-elevated shadow-xl">
+      <Modal open={open} onClose={() => setOpen(false)} className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setCursor((c) => shiftMonth(c, -1))} className="text-stone-500 hover:text-stone-200" aria-label="Mes anterior">
@@ -139,9 +138,7 @@ export function MonthlyReportModal({ spaceId, baseCurrency }: MonthlyReportModal
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

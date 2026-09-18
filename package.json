@@ -16,6 +16,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^4.5.7",
+    "framer-motion": "^13.4.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.446.0",

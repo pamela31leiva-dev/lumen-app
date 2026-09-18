@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
+import { FLOATING_PANEL_VARIANTS, OVERLAY_VARIANTS, SPRING_SNAPPY } from '@/lib/motion';
 import type { SpaceMemberSummary } from '@/domain/types/dashboard';
 
 interface RealtimeSpaceSyncProps {
@@ -118,24 +120,47 @@ export function RealtimeSpaceSync({ spaceId, currentUserId, members }: RealtimeS
     return () => clearTimeout(timer);
   }, [notice]);
 
-  if (revoked) {
-    return (
-      <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-elevated p-6 text-center text-stone-100 shadow-2xl">
-          <p className="text-sm">Tu acceso a este espacio fue revocado.</p>
-          <p className="mt-1 text-xs text-stone-500">Te llevamos a tus espacios...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!notice) return null;
-
   return (
-    <div className="fixed left-1/2 top-4 z-40 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2">
-      <div className="animate-fade-scale-in rounded-lg border border-white/10 bg-elevated/95 px-4 py-2.5 text-center text-xs text-stone-300 shadow-2xl shadow-black/50 backdrop-blur">
-        {notice}
+    <>
+      <AnimatePresence>
+        {revoked && (
+          <motion.div
+            role="alertdialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            variants={OVERLAY_VARIANTS}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <motion.div
+              className="w-full max-w-sm rounded-2xl border border-white/10 bg-elevated p-6 text-center text-stone-100 shadow-2xl"
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={SPRING_SNAPPY}
+            >
+              <p className="text-sm">Tu acceso a este espacio fue revocado.</p>
+              <p className="mt-1 text-xs text-stone-500">Te llevamos a tus espacios...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed left-1/2 top-4 z-40 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2">
+        <AnimatePresence>
+          {notice && (
+            <motion.div
+              className="rounded-lg border border-white/10 bg-elevated/95 px-4 py-2.5 text-center text-xs text-stone-300 shadow-2xl shadow-black/50 backdrop-blur"
+              variants={FLOATING_PANEL_VARIANTS}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              {notice}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </>
   );
 }

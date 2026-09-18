@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
 import { processUblInvoiceUpload, type UblInvoiceUploadResult } from '@/actions/invoices';
 import { checkStorageQuota } from '@/actions/plan-limits';
+import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 
 interface XmlInvoiceUploadModalProps {
@@ -87,12 +88,10 @@ export function XmlInvoiceUploadModal({ spaceId }: XmlInvoiceUploadModalProps) {
         Importar factura (XML)
       </button>
 
-      {open && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-white/10 bg-elevated shadow-xl">
+      <Modal open={open} onClose={handleClose} className="flex max-h-[90vh] max-w-lg flex-col overflow-hidden" labelledBy="xml-upload-title">
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
               <div>
-                <h2 className="text-base font-medium text-stone-100">Importar factura electronica</h2>
+                <h2 id="xml-upload-title" className="text-base font-medium text-stone-100">Importar factura electronica</h2>
                 <p className="mt-0.5 text-xs text-stone-500">
                   XML UBL de la DIAN. Se lee de forma exacta (sin IA) y queda como obligacion en &quot;Facturas&quot;
                   hasta que la pagues.
@@ -217,9 +216,7 @@ export function XmlInvoiceUploadModal({ spaceId }: XmlInvoiceUploadModalProps) {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

@@ -224,7 +224,7 @@ export default async function ExecutiveBoardPage() {
         />
 
         {/* Cero Ruido: detalle por cuenta colapsado — es consulta, no decision */}
-        <details className="group rounded-xl border border-white/10 bg-elevated open:pb-5 transition-colors hover:border-gold/15">
+        <details className="card-surface group rounded-xl border border-white/10 bg-elevated open:pb-5 transition-colors hover:border-gold/15">
           <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-stone-300 marker:content-none">
             <span className="inline-flex items-center gap-2">
               Detalle por cuenta

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { deleteMyAccount, getAccountDeletionPreview, type AccountDeletionBlocker } from '@/actions/account';
 import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
+import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 
 type Step = 'closed' | 'loading-preview' | 'blocked' | 'confirm-text' | 'confirm-final' | 'deleting' | 'done';
@@ -84,9 +85,7 @@ export function AccountDeletionSection() {
         Eliminar cuenta y datos
       </button>
 
-      {isOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-elevated p-6 text-stone-100 shadow-2xl shadow-black/50">
+      <Modal open={isOpen} onClose={close} className="max-w-md p-6 text-stone-100">
             {step === 'loading-preview' && <p className="py-6 text-center text-sm text-stone-400">Verificando tus espacios...</p>}
 
             {step === 'blocked' && (
@@ -183,9 +182,7 @@ export function AccountDeletionSection() {
             {step === 'done' && (
               <p className="py-6 text-center text-sm text-stone-300">Tu cuenta y tus datos fueron eliminados. Hasta pronto.</p>
             )}
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

@@ -3,9 +3,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { setActiveSpace } from '@/actions/dashboard';
 import { CreateSpaceDialog } from '@/components/dashboard/CreateSpaceDialog';
 import { SPACE_TYPE_LABEL, SpaceTypeIcon } from '@/components/dashboard/space-type-icon';
+import { FLOATING_PANEL_VARIANTS } from '@/lib/motion';
 import type { SpaceSummary } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
 
@@ -29,8 +31,11 @@ export function SpaceSwitcher({ spaces, activeSpaceId }: SpaceSwitcherProps) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<MenuCoords | null>(null);
+  const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
 
   const activeSpace = spaces.find((s) => s.id === activeSpaceId) ?? spaces[0] ?? null;
 
@@ -178,55 +183,62 @@ export function SpaceSwitcher({ spaces, activeSpaceId }: SpaceSwitcherProps) {
         se renderiza dentro del <header>, asi que ningun overflow-hidden o
         overflow-y-auto de un ancestro puede recortarlo.
       */}
-      {open &&
-        coords &&
+      {mounted &&
         createPortal(
-          <div
-            ref={panelRef}
-            role="listbox"
-            style={{ top: coords.top, left: coords.left }}
-            className="animate-fade-scale-in fixed z-[9999] min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-elevated/95 shadow-2xl shadow-black/60 backdrop-blur-xl ring-1 ring-white/5"
-          >
-            <p className="border-b border-white/5 px-4 pb-2 pt-3 text-[10px] font-medium uppercase tracking-[0.14em] text-stone-500">
-              Tus espacios
-            </p>
-            <div className="p-1.5">
-              {spaces.map((space) => {
-                const isActive = space.id === activeSpace?.id;
-                return (
-                  <button
-                    key={space.id}
-                    type="button"
-                    role="option"
-                    aria-selected={isActive}
-                    onClick={() => handleSelect(space.id)}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition',
-                      isActive ? 'bg-gold/10 text-gold' : 'text-stone-200 hover:bg-white/5',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                        isActive ? 'bg-gold/15' : 'bg-white/5',
-                      )}
-                    >
-                      <SpaceTypeIcon type={space.type} className={cn('h-4 w-4', isActive ? 'text-gold' : 'text-stone-400')} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">{space.name}</span>
-                      <span className="block truncate text-[11px] text-stone-500">{SPACE_TYPE_LABEL[space.type]}</span>
-                    </span>
-                    {isActive && (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0 text-gold">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>,
+          <AnimatePresence>
+            {open && coords && (
+              <motion.div
+                ref={panelRef}
+                role="listbox"
+                style={{ top: coords.top, left: coords.left }}
+                className="fixed z-[9999] min-w-[16rem] max-w-[min(22rem,calc(100vw-2rem))] origin-top-right overflow-hidden rounded-2xl border border-white/10 bg-elevated/95 shadow-2xl shadow-black/60 backdrop-blur-xl ring-1 ring-white/5"
+                variants={FLOATING_PANEL_VARIANTS}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <p className="border-b border-white/5 px-4 pb-2 pt-3 text-[10px] font-medium uppercase tracking-[0.14em] text-stone-500">
+                  Tus espacios
+                </p>
+                <div className="p-1.5">
+                  {spaces.map((space) => {
+                    const isActive = space.id === activeSpace?.id;
+                    return (
+                      <button
+                        key={space.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
+                        onClick={() => handleSelect(space.id)}
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition',
+                          isActive ? 'bg-gold/10 text-gold' : 'text-stone-200 hover:bg-white/5',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                            isActive ? 'bg-gold/15' : 'bg-white/5',
+                          )}
+                        >
+                          <SpaceTypeIcon type={space.type} className={cn('h-4 w-4', isActive ? 'text-gold' : 'text-stone-400')} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{space.name}</span>
+                          <span className="block truncate text-[11px] text-stone-500">{SPACE_TYPE_LABEL[space.type]}</span>
+                        </span>
+                        {isActive && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0 text-gold">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
           document.body,
         )}
 

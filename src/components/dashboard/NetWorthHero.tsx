@@ -58,7 +58,7 @@ export function NetWorthHero({ baseCurrency, totalBalance, hasRealAssets, monthl
   return (
     <section
       className={cn(
-        'rounded-xl border border-white/10 bg-elevated p-6 transition-colors hover:border-gold/15',
+        'card-surface rounded-xl border border-white/10 bg-elevated p-6 transition-colors hover:border-gold/15',
         isPulsing && 'animate-clarity-pulse',
       )}
     >

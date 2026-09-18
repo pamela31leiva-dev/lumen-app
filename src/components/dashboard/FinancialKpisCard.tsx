@@ -50,7 +50,7 @@ export function FinancialKpisCard({ kpis }: FinancialKpisCardProps) {
   const displays = buildDisplays(kpis);
 
   return (
-    <section className="rounded-xl border border-white/10 bg-elevated p-5 transition-colors hover:border-gold/15">
+    <section className="card-surface rounded-xl border border-white/10 bg-elevated p-5 transition-colors hover:border-gold/15">
       <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-stone-500">KPIs Financieros</p>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {displays.map((kpi) => (

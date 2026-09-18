@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { getExportDataset } from '@/actions/export';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { Modal } from '@/components/ui/Modal';
 
 interface ExportModalProps {
   spaceId: string;
@@ -115,10 +116,8 @@ export function ExportModal({ spaceId }: ExportModalProps) {
         Exportar datos
       </button>
 
-      {open && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-elevated p-6 shadow-xl">
-            <h2 className="text-base font-medium text-stone-100">Exportar reporte</h2>
+      <Modal open={open} onClose={() => setOpen(false)} className="max-w-sm p-6" labelledBy="export-modal-title">
+            <h2 id="export-modal-title" className="text-base font-medium text-stone-100">Exportar reporte</h2>
             <p className="mt-1 text-xs text-stone-500">
               {format === 'xlsx' &&
                 'Genera un Excel con Flujo de Caja, Balance por Categorias, Estado de Resultados y Resumen Fiscal de los movimientos confirmados en el periodo elegido.'}
@@ -165,9 +164,7 @@ export function ExportModal({ spaceId }: ExportModalProps) {
                 {isExporting ? 'Generando...' : `Descargar .${format === 'fiscal_pdf' ? 'pdf' : format}`}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

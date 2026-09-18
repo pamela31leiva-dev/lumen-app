@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createSpace } from '@/actions/dashboard';
 import { SPACE_TYPE_LABEL, SpaceTypeIcon } from '@/components/dashboard/space-type-icon';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { Modal } from '@/components/ui/Modal';
 import type { SpaceType } from '@/domain/types/dashboard';
 import { cn } from '@/lib/utils';
 
@@ -75,10 +76,8 @@ export function CreateSpaceDialog({
         {triggerLabel}
       </button>
 
-      {dialogOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-elevated p-6 shadow-xl">
-            <h2 className="text-base font-medium text-stone-100">Crear espacio</h2>
+      <Modal open={dialogOpen} onClose={() => setDialogOpen(false)} className="max-w-sm p-6" labelledBy="create-space-title">
+            <h2 id="create-space-title" className="text-base font-medium text-stone-100">Crear espacio</h2>
             <p className="mt-1 text-xs text-stone-400">
               Un espacio agrupa cuentas, categorias y movimientos de forma aislada (Personal, Familiar, Negocio o Proyecto).
             </p>
@@ -136,9 +135,7 @@ export function CreateSpaceDialog({
                 {isPending ? 'Creando...' : 'Crear espacio'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

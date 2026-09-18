@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'framer-motion';
 import { processIncomingCapture } from '@/actions/capture';
 import { checkStorageQuota } from '@/actions/plan-limits';
 import { getSupabaseBrowserClient } from '@/infrastructure/supabase/client';
+import { COLLAPSE_VARIANTS, SPRING_SNAPPY } from '@/lib/motion';
 import type { AiCaptureSource } from '@/domain/types/capture';
 import { cn } from '@/lib/utils';
 
@@ -149,9 +151,26 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
   const [isCompressing, setIsCompressing] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null);
   const latestTranscriptRef = useRef('');
   const speechSafetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Atajo global (Cmd/Ctrl+K, estandar de "command palette" -- Linear,
+  // Vercel, Raycast): salta directo al input de captura desde cualquier
+  // parte del tablero, sin buscar ni hacer scroll hasta arriba. preventDefault
+  // es necesario porque Ctrl+K ya tiene un significado nativo en algunos
+  // navegadores (barra de busqueda).
+  useEffect(() => {
+    function handleGlobalKeyDown(event: globalThis.KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        textInputRef.current?.focus();
+      }
+    }
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   function clearSpeechSafetyTimer() {
     if (speechSafetyTimerRef.current) {
@@ -399,36 +418,44 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
   return (
     <section
       id="quick-capture"
-      className="sticky top-4 z-20 rounded-xl border border-white/10 bg-elevated/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur transition-colors hover:border-gold/15 sm:px-5"
+      className="command-glow sticky top-4 z-20 rounded-xl border border-white/10 bg-elevated/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur transition-colors sm:px-5"
     >
-      {selectedFile && (
-        <div className="animate-fade-scale-in mb-2 flex items-center gap-2 rounded-lg border border-white/10 bg-page px-3 py-2">
-          {previewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no un asset optimizable por next/image
-            <img src={previewUrl} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
-          ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/5 text-red-400">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v5h5" />
-              </svg>
-            </div>
-          )}
-          <span className="min-w-0 flex-1 truncate text-xs text-stone-300">{selectedFile.name}</span>
-          <button
-            type="button"
-            onClick={clearSelectedFile}
-            disabled={isPending}
-            title="Quitar archivo"
-            aria-label="Quitar archivo"
-            className="shrink-0 rounded-md p-1 text-stone-500 transition hover:bg-white/5 hover:text-stone-300 disabled:opacity-50"
+      <AnimatePresence initial={false}>
+        {selectedFile && (
+          <motion.div
+            className="mb-2 flex items-center gap-2 overflow-hidden rounded-lg border border-white/10 bg-page px-3 py-2"
+            variants={COLLAPSE_VARIANTS}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
-            </svg>
-          </button>
-        </div>
-      )}
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no un asset optimizable por next/image
+              <img src={previewUrl} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/5 text-red-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-5 w-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 2v5h5" />
+                </svg>
+              </div>
+            )}
+            <span className="min-w-0 flex-1 truncate text-xs text-stone-300">{selectedFile.name}</span>
+            <button
+              type="button"
+              onClick={clearSelectedFile}
+              disabled={isPending}
+              title="Quitar archivo"
+              aria-label="Quitar archivo"
+              className="shrink-0 rounded-md p-1 text-stone-500 transition hover:bg-white/5 hover:text-stone-300 disabled:opacity-50"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex items-center gap-2">
         <button
@@ -516,20 +543,27 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
           </div>
         )}
 
-        <input
-          value={selectedFile ? '' : text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isPending || Boolean(selectedFile)}
-          placeholder={
-            selectedFile
-              ? 'Archivo listo — presiona Registrar'
-              : isListening
-                ? 'Escuchando...'
-                : 'Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo'
-          }
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
-        />
+        <div className="relative min-w-0 flex-1">
+          <input
+            ref={textInputRef}
+            value={selectedFile ? '' : text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isPending || Boolean(selectedFile)}
+            placeholder={
+              selectedFile
+                ? 'Archivo listo — presiona Registrar'
+                : isListening
+                  ? 'Escuchando...'
+                  : 'Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo'
+            }
+            className="peer w-full rounded-lg border border-white/10 bg-page px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
+          />
+          {/* Pista de atajo global (Cmd/Ctrl+K) -- solo visible con el campo vacio y sin foco, via peer-placeholder-shown/peer-focus (sin JS extra para esto). */}
+          <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-stone-500 opacity-0 transition-opacity peer-placeholder-shown:opacity-100 peer-focus:opacity-0 sm:flex">
+            ⌘K
+          </kbd>
+        </div>
 
         <button
           type="button"
@@ -546,20 +580,63 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
         </div>
       </div>
 
-      {feedback && feedback.kind === 'illegible' && (
-        <div className="animate-fade-scale-in mt-2 rounded-lg border border-gold/30 bg-gold-soft px-3 py-2">
-          <p className="text-xs text-stone-100">{feedback.message}</p>
-        </div>
-      )}
-      {feedback && feedback.kind !== 'illegible' && (
-        <p className={cn('mt-2 text-xs', feedback.kind === 'success' ? 'text-growth' : 'text-red-400')}>
-          {feedback.message}
-        </p>
-      )}
-      {!feedback && isCompressing && <p className="mt-2 text-xs text-stone-500">Optimizando imagen...</p>}
-      {!feedback && showSlowNotice && (
-        <p className="mt-2 text-xs text-stone-500">La IA esta interpretando tu movimiento, ya casi...</p>
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {feedback && feedback.kind === 'illegible' && (
+          <motion.div
+            key="illegible"
+            className="mt-2 overflow-hidden rounded-lg border border-gold/30 bg-gold-soft px-3 py-2"
+            variants={COLLAPSE_VARIANTS}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <p className="text-xs text-stone-100">{feedback.message}</p>
+          </motion.div>
+        )}
+        {feedback && feedback.kind !== 'illegible' && (
+          <motion.div
+            key="feedback"
+            className="mt-2 flex items-center gap-1.5 overflow-hidden"
+            variants={COLLAPSE_VARIANTS}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {feedback.kind === 'success' && (
+              <motion.svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="h-3.5 w-3.5 shrink-0 text-growth"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={SPRING_SNAPPY}
+              >
+                <motion.path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.3, ease: 'easeOut', delay: 0.05 }}
+                />
+              </motion.svg>
+            )}
+            <p className={cn('text-xs', feedback.kind === 'success' ? 'text-growth' : 'text-red-400')}>{feedback.message}</p>
+          </motion.div>
+        )}
+        {!feedback && isCompressing && (
+          <motion.p key="compressing" className="mt-2 text-xs text-stone-500" variants={COLLAPSE_VARIANTS} initial="hidden" animate="visible" exit="exit">
+            Optimizando imagen...
+          </motion.p>
+        )}
+        {!feedback && !isCompressing && showSlowNotice && (
+          <motion.p key="slow" className="mt-2 text-xs text-stone-500" variants={COLLAPSE_VARIANTS} initial="hidden" animate="visible" exit="exit">
+            La IA esta interpretando tu movimiento, ya casi...
+          </motion.p>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

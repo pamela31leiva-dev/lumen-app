@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { getImpactSummary } from '@/actions/dashboard';
 import { ImpactSummaryCard } from '@/components/dashboard/ImpactSummaryCard';
+import { Modal } from '@/components/ui/Modal';
 import type { ImpactSummary } from '@/domain/types/dashboard';
 
 /**
@@ -41,9 +42,7 @@ export function ImpactSummaryModal({ spaceId }: { spaceId: string }) {
         Tu año en números
       </button>
 
-      {open && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto">
+      <Modal open={open} onClose={() => setOpen(false)} className="max-h-[90vh] max-w-md overflow-y-auto" unstyled>
             {loading && <p className="py-10 text-center text-sm text-stone-400">Calculando tu resumen...</p>}
             {error && <p className="py-10 text-center text-sm text-red-400">{error}</p>}
             {summary && !loading && (
@@ -63,9 +62,7 @@ export function ImpactSummaryModal({ spaceId }: { spaceId: string }) {
                 Cerrar
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

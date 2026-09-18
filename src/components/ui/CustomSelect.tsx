@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FLOATING_PANEL_VARIANTS } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 export interface CustomSelectOption {
@@ -64,34 +66,40 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
         </svg>
       </button>
 
-      {open && (
-        <div
-          role="listbox"
-          className="animate-fade-scale-in absolute left-0 top-[calc(100%+6px)] z-50 max-h-64 w-full min-w-[10rem] overflow-y-auto rounded-xl border border-white/10 bg-elevated shadow-2xl shadow-black/50"
-        >
-          {options.length === 0 && <p className="px-3.5 py-2.5 text-sm text-stone-500">{emptyLabel}</p>}
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={option.value === value}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              className={cn(
-                'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition',
-                option.value === value ? 'bg-gold/10 text-gold' : 'text-stone-200 hover:bg-white/5',
-              )}
-            >
-              {option.icon}
-              <span className="min-w-0 flex-1 truncate">{option.label}</span>
-              {option.hint && <span className="shrink-0 text-[11px] text-stone-500">{option.hint}</span>}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="listbox"
+            className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-64 w-full min-w-[10rem] origin-top overflow-y-auto rounded-xl border border-white/10 bg-elevated shadow-2xl shadow-black/50"
+            variants={FLOATING_PANEL_VARIANTS}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {options.length === 0 && <p className="px-3.5 py-2.5 text-sm text-stone-500">{emptyLabel}</p>}
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className={cn(
+                  'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition',
+                  option.value === value ? 'bg-gold/10 text-gold' : 'text-stone-200 hover:bg-white/5',
+                )}
+              >
+                {option.icon}
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                {option.hint && <span className="shrink-0 text-[11px] text-stone-500">{option.hint}</span>}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
