@@ -70,7 +70,7 @@ export function CreateAccountForm({ spaceId, baseCurrency }: CreateAccountFormPr
   }
 
   return (
-    <div className="mt-3 flex flex-col gap-3 rounded-lg border border-white/10 bg-obsidian p-4 sm:flex-row sm:items-end">
+    <div className="mt-3 flex flex-col gap-3 rounded-lg border border-white/10 bg-page p-4 sm:flex-row sm:items-end">
       <div className="flex-1">
         <label className="mb-1 block text-xs font-medium text-stone-300">Nombre</label>
         <input

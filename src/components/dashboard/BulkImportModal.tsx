@@ -343,7 +343,7 @@ export function BulkImportModal({ spaceId }: BulkImportModalProps) {
 
                   <div className="overflow-x-auto rounded-lg border border-white/10">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-obsidian text-stone-500">
+                      <thead className="bg-page text-stone-500">
                         <tr>
                           <th className="px-3 py-2 font-medium">Fecha</th>
                           <th className="px-3 py-2 font-medium">Monto</th>

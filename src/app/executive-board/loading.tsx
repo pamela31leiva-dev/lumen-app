@@ -6,7 +6,7 @@
  */
 export default function ExecutiveBoardLoading() {
   return (
-    <main className="min-h-screen bg-obsidian text-stone-100">
+    <main className="min-h-screen bg-page text-stone-100">
       <div className="animate-pulse border-b border-white/10 px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <div className="h-4 w-40 rounded bg-white/5" />

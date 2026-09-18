@@ -121,7 +121,7 @@ export function FiscalCategoriesManager({ spaceId, spaceType, categories, tags, 
     const suggestion = suggestTaxTreatment(category.kind, spaceType);
 
     return (
-      <div key={category.id} className="flex flex-col gap-1.5 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div key={category.id} className="flex flex-col gap-1.5 rounded-lg border border-white/10 bg-page px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <span className="min-w-0 truncate text-sm text-stone-200">{category.name}</span>
         <div className="flex shrink-0 items-center gap-2 sm:w-auto">
           <div className="w-40 shrink-0">
@@ -162,7 +162,7 @@ export function FiscalCategoriesManager({ spaceId, spaceType, categories, tags, 
       {/* Glosario en lenguaje humano -- "gravado" o "deducible" no dicen nada
           por si solos a quien no es contador. Siempre visible (no un tooltip
           escondido detras de un hover, que en movil ni siquiera existe). */}
-      <div className="rounded-lg border border-white/10 bg-obsidian/60 p-3">
+      <div className="rounded-lg border border-white/10 bg-page/60 p-3">
         <p className="mb-2 text-xs font-medium text-stone-300">¿Que significa cada termino?</p>
         <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
           {ALL_TREATMENTS.map((t) => (

@@ -5,22 +5,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark Elevated Theme — banca privada de alto nivel.
-        obsidian: '#0B0F17', // fondo base de pagina
-        elevated: '#111827', // superficie de tarjetas (Dark Slate)
+        // Modo Claro Luminoso (Fase 2) — banca privada de alto nivel, ahora
+        // sobre fondos claros. Los tokens leen variables CSS en `globals.css`
+        // para que las variantes de opacidad (bg-page/60, bg-elevated/95,
+        // gold/15...) sigan funcionando con un solo punto de ajuste de color.
+        page: 'rgb(var(--color-page) / <alpha-value>)', // fondo base de pagina (antes "obsidian")
+        obsidian: '#0B0F17', // ahora solo texto oscuro (text-obsidian) sobre superficies claras/doradas
+        elevated: 'rgb(var(--color-elevated) / <alpha-value>)', // superficie de tarjetas (blanco limpio)
         gold: {
-          DEFAULT: '#D4AF37', // Champagne Gold — saldos maestros / estatus
-          soft: 'rgb(212 175 55 / 0.12)',
+          DEFAULT: 'rgb(var(--color-gold) / <alpha-value>)', // Champagne Gold — saldos maestros / estatus
+          soft: 'rgb(var(--color-gold) / 0.12)',
         },
         growth: {
-          DEFAULT: '#059669', // Esmeralda Mate — dato: balances/metricas positivas (nunca botones)
-          soft: 'rgb(5 150 105 / 0.12)',
+          DEFAULT: 'rgb(var(--color-growth) / <alpha-value>)', // Esmeralda Mate — dato: balances/metricas positivas (nunca botones)
+          soft: 'rgb(var(--color-growth) / 0.12)',
         },
         wealth: {
           // Verde esmeralda mate para botones de accion — mismo matiz que growth,
           // pero desaturado y mas oscuro para evitar el efecto neon en superficies solidas.
-          DEFAULT: '#2F6F5E',
-          hover: '#3A8573',
+          DEFAULT: 'rgb(var(--color-wealth) / <alpha-value>)',
+          hover: 'rgb(var(--color-wealth-hover) / <alpha-value>)',
         },
       },
     },

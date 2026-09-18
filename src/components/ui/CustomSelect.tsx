@@ -53,7 +53,7 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 transition hover:border-white/20 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-50"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 transition hover:border-white/20 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-50"
       >
         <span className={cn('flex min-w-0 flex-1 items-center gap-2 truncate text-left', !selected && 'text-stone-600')}>
           {selected?.icon}

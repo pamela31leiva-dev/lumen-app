@@ -22,7 +22,7 @@ export function IdentitySnapshotCard({ snapshot, spaceName }: IdentitySnapshotCa
   const hasContent = snapshot.learnedHints.length > 0 || snapshot.topCategoryName !== null;
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-b from-elevated to-obsidian p-6 text-stone-100 shadow-2xl shadow-black/50">
+    <div className="w-full overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-b from-elevated to-page p-6 text-stone-100 shadow-2xl shadow-black/50">
       <p className="text-[11px] uppercase tracking-[0.2em] text-gold">Lumen · Asi te conozco</p>
       <p className="text-xs text-stone-500">{spaceName}</p>
 

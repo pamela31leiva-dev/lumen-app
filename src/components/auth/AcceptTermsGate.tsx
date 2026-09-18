@@ -42,7 +42,7 @@ export function AcceptTermsGate() {
         1581 de 2012 (Habeas Data).
       </p>
 
-      <div className="mt-4 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-obsidian p-4 text-xs text-stone-400">
+      <div className="mt-4 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-page p-4 text-xs text-stone-400">
         <p className="font-medium text-stone-300">Resumen de Terminos de Uso</p>
         <p className="mt-1.5">
           Lumen es una herramienta de organizacion financiera personal, de caracter informativo y descriptivo. No
@@ -73,7 +73,7 @@ export function AcceptTermsGate() {
           type="checkbox"
           checked={checked}
           onChange={(e) => setChecked(e.target.checked)}
-          className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-obsidian accent-emerald-600 text-emerald-600 focus:ring-emerald-600"
+          className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-page accent-emerald-600 text-emerald-600 focus:ring-emerald-600"
         />
         <span>He leido y acepto los Terminos de Uso y la Politica de Tratamiento de Datos de Lumen.</span>
       </label>

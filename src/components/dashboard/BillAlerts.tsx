@@ -130,7 +130,7 @@ export function BillAlerts({ spaceId, bills, reminderDays }: BillAlertsProps) {
               placeholder="Ej. Recibo de luz"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
             />
             <input
               type="number"
@@ -139,13 +139,13 @@ export function BillAlerts({ spaceId, bills, reminderDays }: BillAlertsProps) {
               placeholder="Monto"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="amount w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 sm:w-32"
+              className="amount w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 sm:w-32"
             />
             <input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 sm:w-auto"
+              className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 sm:w-auto"
             />
           </div>
           <div className="flex justify-end gap-2">

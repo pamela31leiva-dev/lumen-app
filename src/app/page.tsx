@@ -78,14 +78,14 @@ export default function HomePage() {
 
   if (status === 'entering') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-obsidian text-stone-100">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-page text-stone-100">
         <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Preparando tu espacio...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-obsidian text-stone-100">
+    <div className="flex min-h-screen flex-col bg-page text-stone-100">
       <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-2xl font-medium text-gold">Lumen</h1>
         <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Inteligencia Patrimonial</p>

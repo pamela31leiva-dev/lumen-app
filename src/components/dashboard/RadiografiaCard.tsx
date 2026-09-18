@@ -57,7 +57,7 @@ export function RadiografiaCard({ folderDistribution, weekdayHeat, baseCurrency 
         {folderDistribution.map((slice, i) => (
           <div
             key={slice.folder}
-            className={cn(SEGMENT_COLORS[i % SEGMENT_COLORS.length], i > 0 && 'border-l border-obsidian/40')}
+            className={cn(SEGMENT_COLORS[i % SEGMENT_COLORS.length], i > 0 && 'border-l border-page/40')}
             style={{ width: `${Math.max(2, (slice.total / totalSpend) * 100)}%` }}
             title={`${FOLDER_LABEL[slice.folder]}: ${formatMoney(slice.total, baseCurrency)}`}
           />

@@ -271,7 +271,7 @@ export function TransactionHistoryList({ spaceId, items, categories, canDelete, 
                   type="checkbox"
                   checked={selectedIds.has(item.id)}
                   onChange={() => toggleSelected(item.id)}
-                  className="h-4 w-4 shrink-0 rounded border-white/20 bg-obsidian accent-emerald-600"
+                  className="h-4 w-4 shrink-0 rounded border-white/20 bg-page accent-emerald-600"
                 />
               )}
               <div className="min-w-0">

@@ -134,7 +134,7 @@ export function SpaceMembersManager({ spaceId, members, canManage }: SpaceMember
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isPending}
-            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
           />
           <div className="w-full sm:w-40">
             <CustomSelect value={inviteRole} onChange={(value) => setInviteRole(value as AssignableRole)} options={ASSIGNABLE_ROLE_OPTIONS} />

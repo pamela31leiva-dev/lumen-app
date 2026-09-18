@@ -21,7 +21,7 @@ export function SessionPreferenceInfo() {
   }, []);
 
   return (
-    <div className="rounded-lg border border-white/10 bg-obsidian p-4 text-xs text-stone-400">
+    <div className="rounded-lg border border-white/10 bg-page p-4 text-xs text-stone-400">
       <p className="text-stone-300">
         Preferencia activa en <span className="text-stone-100">este navegador</span>:{' '}
         <span className="font-medium text-gold">{mode ? LABEL[mode] : 'cargando...'}</span>

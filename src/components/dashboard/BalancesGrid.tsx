@@ -93,7 +93,7 @@ export function BalancesGrid({ baseCurrency, accounts }: BalancesGridProps) {
                 <div
                   key={account.accountId}
                   className={cn(
-                    'rounded-lg border border-white/10 bg-obsidian p-4 transition-colors hover:border-gold/15',
+                    'rounded-lg border border-white/10 bg-page p-4 transition-colors hover:border-gold/15',
                     !account.isActive && 'opacity-50',
                   )}
                 >

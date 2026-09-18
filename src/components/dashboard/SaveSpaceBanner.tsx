@@ -89,7 +89,7 @@ export function SaveSpaceBanner() {
           placeholder="Correo"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
         />
         <input
           type="password"
@@ -98,7 +98,7 @@ export function SaveSpaceBanner() {
           placeholder="Contrasena"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
         />
       </div>
 
@@ -107,7 +107,7 @@ export function SaveSpaceBanner() {
           type="checkbox"
           checked={acceptedTerms}
           onChange={(e) => setAcceptedTerms(e.target.checked)}
-          className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-obsidian accent-emerald-600 text-emerald-600 focus:ring-emerald-600"
+          className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-page accent-emerald-600 text-emerald-600 focus:ring-emerald-600"
         />
         <span>Confirmo que soy mayor de 18 anos y acepto el tratamiento de mis datos (Ley 1581 de 2012, Habeas Data).</span>
       </label>

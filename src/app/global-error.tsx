@@ -21,7 +21,7 @@ export default function GlobalErrorBoundary({ error, reset }: { error: Error & {
 
   return (
     <html lang="es">
-      <body style={{ background: '#0B0F17', color: '#f5f5f4', margin: 0 }}>
+      <body style={{ background: '#FAFAF9', color: '#1c1917', margin: 0 }}>
         <main
           style={{
             display: 'flex',
@@ -37,14 +37,15 @@ export default function GlobalErrorBoundary({ error, reset }: { error: Error & {
               width: '100%',
               maxWidth: 384,
               borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: '#111827',
+              border: '1px solid rgba(0,0,0,0.08)',
+              background: '#FFFFFF',
+              boxShadow: '0 10px 30px rgba(28,25,23,0.08)',
               padding: 24,
               textAlign: 'center',
             }}
           >
-            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#D4AF37', margin: 0 }}>Lumen no pudo cargar</h1>
-            <p style={{ marginTop: 8, fontSize: 14, color: '#a8a29e' }}>
+            <h1 style={{ fontSize: 18, fontWeight: 500, color: '#8D6C1B', margin: 0 }}>Lumen no pudo cargar</h1>
+            <p style={{ marginTop: 8, fontSize: 14, color: '#57534e' }}>
               Ya nos enteramos y lo estamos revisando. Intenta recargar en un momento.
             </p>
             <button

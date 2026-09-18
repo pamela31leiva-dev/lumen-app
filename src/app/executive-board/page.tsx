@@ -50,7 +50,7 @@ export default async function ExecutiveBoardPage() {
 
   if (spaces.length === 0) {
     return (
-      <main className="min-h-screen bg-obsidian px-6 py-10 text-stone-100">
+      <main className="min-h-screen bg-page px-6 py-10 text-stone-100">
         <div className="mx-auto max-w-md text-center">
           <h1 className="text-xl font-medium">Crea tu primer espacio</h1>
           <p className="mt-2 text-sm text-stone-400">
@@ -124,7 +124,7 @@ export default async function ExecutiveBoardPage() {
   const financialHistoryQuarterly = resampleQuarterly(financialHistory);
 
   return (
-    <main className="min-h-screen bg-obsidian text-stone-100">
+    <main className="min-h-screen bg-page text-stone-100">
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="executive-board" />
 
       {/* Espacios colaborativos: sincroniza el tablero en vivo cuando otro

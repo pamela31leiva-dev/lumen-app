@@ -105,7 +105,7 @@ function CaptureRow({ spaceId, capture }: { spaceId: string; capture: FailedCapt
           <input
             value={editedText}
             onChange={(e) => setEditedText(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
             autoFocus
           />
           <div className="mt-2 flex justify-end gap-2">

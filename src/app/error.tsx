@@ -22,7 +22,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
   }, [error]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-obsidian px-4 text-stone-100">
+    <main className="flex min-h-screen items-center justify-center bg-page px-4 text-stone-100">
       <div className="w-full max-w-sm rounded-xl border border-white/10 bg-elevated p-6 text-center">
         <h1 className="text-lg font-medium text-gold">Algo no salio como esperabamos</h1>
         <p className="mt-2 text-sm text-stone-400">

@@ -402,7 +402,7 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
       className="sticky top-4 z-20 rounded-xl border border-white/10 bg-elevated/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur transition-colors hover:border-gold/15 sm:px-5"
     >
       {selectedFile && (
-        <div className="animate-fade-scale-in mb-2 flex items-center gap-2 rounded-lg border border-white/10 bg-obsidian px-3 py-2">
+        <div className="animate-fade-scale-in mb-2 flex items-center gap-2 rounded-lg border border-white/10 bg-page px-3 py-2">
           {previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no un asset optimizable por next/image
             <img src={previewUrl} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
@@ -528,7 +528,7 @@ export function CommandConsole({ spaceId, canEdit }: CommandConsoleProps) {
                 ? 'Escuchando...'
                 : 'Ej. 45.000 almuerzo con Juan, o 2.300.000 pago de arriendo'
           }
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2.5 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
         />
 
         <button

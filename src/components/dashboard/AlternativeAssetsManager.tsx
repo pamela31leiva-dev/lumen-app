@@ -125,7 +125,7 @@ export function AlternativeAssetsManager({ spaceId, assets, totalBase, baseCurre
         ))}
 
       {assets.map((asset) => (
-        <div key={asset.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
+        <div key={asset.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-page px-4 py-2.5">
           <div className="min-w-0">
             <p className="truncate text-sm text-stone-200">
               {asset.name} <span className="text-xs text-stone-500">· {TYPE_LABEL[asset.assetType]}</span>
@@ -166,7 +166,7 @@ export function AlternativeAssetsManager({ spaceId, assets, totalBase, baseCurre
 
       {canEdit &&
         (showForm ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-obsidian p-4">
+          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-page p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-stone-300">Nombre</label>

@@ -199,7 +199,7 @@ export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes, 
       {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-3 rounded-xl border border-white/10 bg-obsidian p-4">
+        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-3 rounded-xl border border-white/10 bg-page p-4">
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
@@ -248,7 +248,7 @@ export function RecurringIncomesCard({ spaceId, baseCurrency, recurringIncomes, 
                 type="checkbox"
                 checked={adjustmentEnabled}
                 onChange={(e) => setAdjustmentEnabled(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-white/20 bg-obsidian accent-emerald-600"
+                className="h-3.5 w-3.5 rounded border-white/20 bg-page accent-emerald-600"
               />
               Ajustar automaticamente cada año (IPC u otro %)
             </label>

@@ -3,8 +3,26 @@
 @tailwind utilities;
 
 :root {
-  --background: #0b0f17;
-  --foreground: #f5f5f4;
+  /* Sistema de Diseño Luminoso (Fase 2): fondos blancos/marfil, tarjetas
+     blancas limpias y acentos vibrantes reforzados para leerse con
+     comodidad (AA) sobre claro -- ver tailwind.config.ts para los tokens
+     que consumen estos canales RGB (page, elevated, gold, growth, wealth). */
+  --color-page: 250 250 249; /* marfil sutil -- fondo base de pagina */
+  --color-elevated: 255 255 255; /* blanco puro -- superficie de tarjetas */
+  --color-gold: 141 108 27; /* Champagne Gold oscurecido para contraste AA sobre blanco */
+  --color-growth: 5 150 105; /* Esmeralda Mate -- ya legible sobre blanco, sin cambios */
+  --color-wealth: 47 111 94; /* sin cambios -- botones de accion */
+  --color-wealth-hover: 58 133 115;
+
+  --background: rgb(var(--color-page));
+  --foreground: #1c1917;
+
+  /* Fuerza que los controles nativos del navegador (checkboxes, scrollbar,
+     selects, date pickers sin estilo propio) rendericen en su variante
+     CLARA aunque el sistema operativo este en modo oscuro -- sin esto, un
+     usuario con su SO en modo oscuro ve fragmentos de UI nativa oscuros
+     "filtrandose" sobre un layout que por lo demas es 100% claro. */
+  color-scheme: light;
 }
 
 /* Contencion final anti-desborde horizontal: sin esto, un solo elemento
@@ -83,4 +101,137 @@ body {
   .animate-clarity-pulse {
     animation: none;
   }
+}
+
+/* ============================================================
+   Fase 2 -- Modo Claro Luminoso: remapeo de utilidades crudas
+   ============================================================
+   La app se construyo asumiendo fondo oscuro: text-stone-100/200/300/400
+   eran texto CLARO sobre negro, y border-white/bg-white eran veladuras
+   sutiles sobre negro. En vez de reescribir cada uno de los 60+ archivos
+   que usan estas clases, se remapean aqui para que rindan correctamente
+   sobre el nuevo fondo claro. Es el UNICO lugar a tocar si el tono vuelve
+   a cambiar. text-stone-500/600 no se tocan: ya son gris medio/oscuro y
+   se leen bien sobre blanco sin invertir nada. text-white y bg-white
+   (sin veladura) tampoco se tocan: son etiquetas sobre botones/superficies
+   de color solido (bg-wealth, bg-red-600, bg-gold) que ya contrastan bien
+   en cualquier tema. */
+
+.text-stone-100 {
+  color: #1c1917;
+}
+.text-stone-200 {
+  color: #292524;
+}
+.text-stone-300 {
+  color: #44403c;
+}
+.text-stone-400 {
+  color: #78716c;
+}
+
+.hover\:text-stone-200:hover {
+  color: #1c1917;
+}
+.hover\:text-stone-300:hover {
+  color: #292524;
+}
+
+.placeholder\:text-stone-600::placeholder {
+  color: #a8a29e;
+}
+
+.border-white\/5 {
+  border-color: rgb(0 0 0 / 0.04);
+}
+.border-white\/10 {
+  border-color: rgb(0 0 0 / 0.08);
+}
+.border-white\/15 {
+  border-color: rgb(0 0 0 / 0.12);
+}
+.border-white\/20 {
+  border-color: rgb(0 0 0 / 0.16);
+}
+
+.bg-white\/5 {
+  background-color: rgb(0 0 0 / 0.035);
+}
+.bg-white\/10 {
+  background-color: rgb(0 0 0 / 0.06);
+}
+.bg-white\/15 {
+  background-color: rgb(0 0 0 / 0.09);
+}
+.hover\:bg-white\/5:hover {
+  background-color: rgb(0 0 0 / 0.035);
+}
+.hover\:bg-white\/15:hover {
+  background-color: rgb(0 0 0 / 0.09);
+}
+
+.divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(0 0 0 / 0.08);
+}
+
+.ring-white\/5 {
+  --tw-ring-color: rgb(0 0 0 / 0.05);
+}
+
+/* Sombras suaves de tarjeta (requerimiento Fase 2 punto 2): shadow-black/*
+   ya apunta en la direccion correcta sobre blanco, solo se atenua un poco
+   la opacidad para que se sienta "suave" y no como un recorte duro. */
+.shadow-black\/40 {
+  --tw-shadow-color: rgb(28 25 23 / 0.08);
+}
+.shadow-black\/50 {
+  --tw-shadow-color: rgb(28 25 23 / 0.1);
+}
+.shadow-black\/60 {
+  --tw-shadow-color: rgb(28 25 23 / 0.12);
+}
+
+/* ============================================================
+   Correccion critica -- colores de estado calibrados para fondo
+   oscuro (emerald/red/amber/sky en sus tonos 300/400, pensados para
+   resaltar sobre negro) quedaban lavados/ilegibles sobre las nuevas
+   superficies blancas. Se remapean a sus equivalentes oscuros con
+   contraste AA sobre blanco, sin tocar los usos de esos mismos colores
+   en tonos 500/600/900 a baja opacidad como fondo/borde de pildora,
+   que ya se ven bien sobre claro. */
+.text-emerald-400 {
+  color: #047857;
+}
+.hover\:text-emerald-300:hover {
+  color: #065f46;
+}
+.decoration-emerald-400\/40 {
+  text-decoration-color: rgb(4 120 87 / 0.4);
+}
+
+.text-red-400 {
+  color: #b91c1c;
+}
+.hover\:text-red-300:hover {
+  color: #991b1b;
+}
+.bg-red-950\/20 {
+  background-color: rgb(220 38 38 / 0.08);
+}
+.hover\:bg-red-950\/20:hover {
+  background-color: rgb(220 38 38 / 0.08);
+}
+.border-red-900\/50 {
+  border-color: rgb(220 38 38 / 0.25);
+}
+
+.text-amber-300 {
+  color: #92400e;
+}
+.text-amber-400 {
+  color: #92400e;
+}
+
+.text-sky-400 {
+  color: #0369a1;
 }

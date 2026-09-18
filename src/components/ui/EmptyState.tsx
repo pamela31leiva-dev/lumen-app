@@ -17,7 +17,7 @@ interface EmptyStateProps {
  */
 export function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 bg-obsidian/60 px-4 py-6 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 bg-page/60 px-4 py-6 text-center">
       <p className="text-sm font-medium text-stone-300">{title}</p>
       <p className="max-w-xs text-xs text-stone-500">{description}</p>
       <button

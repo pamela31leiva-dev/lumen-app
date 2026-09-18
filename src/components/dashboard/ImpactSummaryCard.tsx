@@ -16,7 +16,7 @@ export function ImpactSummaryCard({ summary }: { summary: ImpactSummary }) {
   return (
     <div
       id="impact-summary-card"
-      className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-b from-elevated to-obsidian p-6 text-stone-100 shadow-2xl shadow-black/50"
+      className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-b from-elevated to-page p-6 text-stone-100 shadow-2xl shadow-black/50"
     >
       <p className="text-[11px] uppercase tracking-[0.2em] text-gold">Lumen · Resumen de Impacto</p>
       <h2 className="mt-1 text-xl font-semibold">{summary.spaceName}</h2>

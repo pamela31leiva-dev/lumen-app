@@ -128,7 +128,7 @@ export function AccountDeletionSection() {
                   type="text"
                   value={confirmationText}
                   onChange={(e) => setConfirmationText(e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                   autoFocus
                 />
                 {error && <p className="mt-2 text-xs text-red-400">{error}</p>}

@@ -83,7 +83,7 @@ function RuleForm({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-obsidian p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-page p-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-stone-300">Texto a reconocer en la descripcion</label>
         <input
@@ -230,7 +230,7 @@ export function MerchantRulesManager({ spaceId, rules, categories, accounts, can
             onCancel={() => setEditingId(null)}
           />
         ) : (
-          <div key={rule.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
+          <div key={rule.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-page px-4 py-2.5">
             <div className="min-w-0">
               <p className="truncate text-sm text-stone-200">
                 &quot;{rule.pattern}&quot;

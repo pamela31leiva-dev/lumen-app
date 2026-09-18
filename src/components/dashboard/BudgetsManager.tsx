@@ -107,7 +107,7 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
         ))}
 
       {budgets.map((budget) => (
-        <div key={budget.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
+        <div key={budget.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-page px-4 py-2.5">
           <span className="text-sm text-stone-200">{budget.categoryName}</span>
           <div className="flex shrink-0 items-center gap-3">
             <span className="amount text-sm text-stone-300">
@@ -134,7 +134,7 @@ export function BudgetsManager({ spaceId, budgets, categories, baseCurrency, can
 
       {canEdit &&
         (showForm ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-obsidian p-4 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-page p-4 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-stone-300">Categoria</label>
               <CustomSelect

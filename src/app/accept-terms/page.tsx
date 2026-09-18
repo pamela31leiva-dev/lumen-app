@@ -17,7 +17,7 @@ export default async function AcceptTermsPage() {
   if (!user) redirect('/login');
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-obsidian px-4 py-8 text-stone-100">
+    <div className="flex min-h-screen items-center justify-center bg-page px-4 py-8 text-stone-100">
       <AcceptTermsGate />
     </div>
   );

@@ -101,7 +101,7 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
         ))}
 
       {channels.map((channel) => (
-        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
+        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-page px-4 py-2.5">
           <div className="min-w-0">
             <p className="truncate text-sm text-stone-200">{channel.label}</p>
             <p className="mt-0.5 text-xs text-stone-500">
@@ -128,7 +128,7 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
         <div className="flex flex-col gap-2 rounded-lg border border-gold/30 bg-gold/10 p-4 text-xs">
           <p className="font-medium text-gold">Guarda este token ahora -- no se volvera a mostrar.</p>
           <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded bg-obsidian px-2 py-1.5 text-stone-200">{newToken}</code>
+            <code className="min-w-0 flex-1 overflow-x-auto rounded bg-page px-2 py-1.5 text-stone-200">{newToken}</code>
             <button type="button" onClick={() => copy(newToken, 'token')} className="shrink-0 text-stone-400 hover:text-stone-200">
               {copied === 'token' ? 'Copiado' : 'Copiar'}
             </button>
@@ -137,7 +137,7 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
             Envia el documento por POST (multipart/form-data, campo &quot;file&quot;) a:
           </p>
           <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded bg-obsidian px-2 py-1.5 text-stone-200">{webhookUrl}</code>
+            <code className="min-w-0 flex-1 overflow-x-auto rounded bg-page px-2 py-1.5 text-stone-200">{webhookUrl}</code>
             <button type="button" onClick={() => copy(webhookUrl, 'url')} className="shrink-0 text-stone-400 hover:text-stone-200">
               {copied === 'url' ? 'Copiado' : 'Copiar'}
             </button>
@@ -158,7 +158,7 @@ export function InboundChannelsManager({ spaceId, channels, canManage }: Inbound
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="ej. Correo de facturas"
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
             />
             <button
               type="button"

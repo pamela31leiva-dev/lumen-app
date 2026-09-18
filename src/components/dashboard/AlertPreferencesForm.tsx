@@ -66,7 +66,7 @@ export function AlertPreferencesForm({ spaceId, currentBillReminderDays, canEdit
             setDays(e.target.value);
             setSaved(false);
           }}
-          className="w-20 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
+          className="w-20 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
         />
         <span className="text-xs text-stone-500">dias</span>
         {canEdit && (

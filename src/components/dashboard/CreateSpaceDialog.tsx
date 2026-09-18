@@ -94,7 +94,7 @@ export function CreateSpaceDialog({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej. Casa, Freelance, Viaje a Cartagena"
-                  className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 />
               </div>
 

@@ -16,13 +16,13 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Lumen',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0B0F17',
+  themeColor: '#FAFAF9',
   // viewportFit=cover habilita env(safe-area-inset-*) en CSS -- sin esto, la
   // barra inferior fija (MobileBottomNav) y otros elementos anclados al
   // fondo quedan tapados por el home indicator en iPhones con notch.

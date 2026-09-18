@@ -25,7 +25,7 @@ export default async function MovimientosPage() {
   const canManage = canManageSpace(activeSpace.role);
 
   return (
-    <main className="min-h-screen bg-obsidian text-stone-100">
+    <main className="min-h-screen bg-page text-stone-100">
       <AppNav spaces={spaces} activeSpaceId={activeSpace.id} activePath="movimientos" />
 
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 pb-24 sm:pb-8">

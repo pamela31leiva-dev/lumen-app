@@ -144,7 +144,7 @@ export function NotificationChannelsManager({ spaceId, channels, canManage }: No
         ))}
 
       {channels.map((channel) => (
-        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-obsidian px-4 py-2.5">
+        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-page px-4 py-2.5">
           <div className="min-w-0">
             <p className="truncate text-sm text-stone-200">
               {CHANNEL_LABEL[channel.channelType]} · {channel.maskedTarget}
@@ -172,7 +172,7 @@ export function NotificationChannelsManager({ spaceId, channels, canManage }: No
 
       {canManage &&
         (showForm ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-obsidian p-4">
+          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-page p-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-stone-300">Tipo de canal</label>
               <CustomSelect value={channelType} onChange={(v) => setChannelType(v as NotificationChannelType)} options={TYPE_OPTIONS} />

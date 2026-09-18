@@ -484,7 +484,7 @@ export function PendingConfirmationCard({
                 }}
                 placeholder="Responde en pocas palabras..."
                 disabled={isPending}
-                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
               />
               <button
                 type="button"
@@ -617,7 +617,7 @@ export function PendingConfirmationCard({
                 step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -629,7 +629,7 @@ export function PendingConfirmationCard({
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
                     maxLength={3}
-                    className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                   />
                 </div>
 
@@ -642,7 +642,7 @@ export function PendingConfirmationCard({
                       step="0.0001"
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(e.target.value)}
-                      className="w-full min-w-0 rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                      className="w-full min-w-0 rounded-lg border border-white/10 bg-page px-3 py-2 amount text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                     />
                     <button
                       type="button"
@@ -674,7 +674,7 @@ export function PendingConfirmationCard({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -683,7 +683,7 @@ export function PendingConfirmationCard({
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -693,7 +693,7 @@ export function PendingConfirmationCard({
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
                 placeholder="ej. lonchera, colegio"
-                className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
               <p className="mt-1 text-[11px] text-stone-500">Separadas por comas. Sirven para agrupar iniciativas dentro de este espacio.</p>
             </div>
@@ -708,7 +708,7 @@ export function PendingConfirmationCard({
                   value={withholdingTax}
                   onChange={(e) => setWithholdingTax(e.target.value)}
                   placeholder="Monto que te retuvo quien te pago"
-                  className="w-full rounded-lg border border-white/10 bg-obsidian px-3 py-2 amount text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  className="w-full rounded-lg border border-white/10 bg-page px-3 py-2 amount text-sm text-stone-100 placeholder:text-stone-600 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 />
                 <p className="mt-1 text-[11px] text-stone-500">Solo si tienes el certificado o lo sabes con certeza -- alimenta tu Resumen Fiscal.</p>
               </div>
