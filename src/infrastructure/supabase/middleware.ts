@@ -10,6 +10,11 @@ const ACCEPT_TERMS_PATH = '/accept-terms';
 // /privacy queda exento del gate de consentimiento a proposito: la persona
 // debe poder leer la politica completa este o no aceptada todavia.
 const CONSENT_EXEMPT_PREFIXES = [ACCEPT_TERMS_PATH, '/privacy'];
+const ONBOARDING_PATH = '/onboarding';
+// Mismo criterio que CONSENT_EXEMPT_PREFIXES: /privacy debe poder leerse sin
+// haber terminado el wizard, y /onboarding obviamente no puede exigirse a si
+// mismo.
+const ONBOARDING_EXEMPT_PREFIXES = [ONBOARDING_PATH, '/privacy'];
 
 /**
  * Refresca la sesion de Supabase en cada request, protege rutas privadas
@@ -82,13 +87,41 @@ export async function updateSupabaseSession(request: NextRequest) {
   // seria peor que dejar pasar ocasionalmente sin el gate.
   const isConsentExempt = CONSENT_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   let hasAcceptedTerms = true;
+  let hasCompletedOnboarding = true;
   if (user && supabase) {
+    // Dos consultas independientes a proposito (no un solo .select con ambas
+    // columnas): son dos gates de cumplimiento/UX totalmente separados, y
+    // PostgREST no lanza excepcion ante un error de columna -- devuelve
+    // data:null sin tirar el try/catch. Si estuvieran en el mismo select,
+    // un problema con onboarding_completed_at (ej. migracion 0037 todavia no
+    // aplicada) volveria data:null para TODO el resultado y tumbaria
+    // tambien hasAcceptedTerms a false, bloqueando a todo el mundo en
+    // /accept-terms por un problema que no tiene nada que ver con eso.
     try {
       const { data: profile } = await supabase.from('profiles').select('terms_accepted_at').eq('id', user.id).maybeSingle();
       hasAcceptedTerms = Boolean(profile?.terms_accepted_at);
     } catch (err) {
       console.error(
         '[LUMEN MIDDLEWARE] Lookup de consentimiento fallo, se trata como ya aceptado:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+    try {
+      // A diferencia del gate de terminos (cumplimiento legal, ver arriba),
+      // este es solo de UX -- si la consulta falla por CUALQUIER motivo
+      // (incluido un error de PostgREST que no lanza excepcion, ej. la
+      // columna todavia no existe porque la migracion 0037 no se aplico),
+      // se trata como ya completo. Mostrar el wizard de mas es friccion;
+      // nunca mostrarlo no rompe nada.
+      const { data: profile, error: onboardingError } = await supabase
+        .from('profiles')
+        .select('onboarding_completed_at')
+        .eq('id', user.id)
+        .maybeSingle();
+      hasCompletedOnboarding = onboardingError ? true : Boolean(profile?.onboarding_completed_at);
+    } catch (err) {
+      console.error(
+        '[LUMEN MIDDLEWARE] Lookup de onboarding fallo, se trata como ya completo:',
         err instanceof Error ? err.message : err,
       );
     }
@@ -104,6 +137,19 @@ export async function updateSupabaseSession(request: NextRequest) {
     return NextResponse.redirect(new URL(ACCEPT_TERMS_PATH, request.url));
   }
   if (user && hasAcceptedTerms && pathname === ACCEPT_TERMS_PATH) {
+    return NextResponse.redirect(new URL('/executive-board', request.url));
+  }
+
+  // Wizard de Bienvenida (Fase 3, 0037): solo despues de aceptar terminos.
+  // Igual que el Modo Fantasma queda exento del gate de Habeas Data (linea
+  // arriba), tambien queda exento de este wizard -- forzarlo antes de que la
+  // persona haya entregado un solo dato real seria la friccion que el Modo
+  // Fantasma existe para evitar.
+  const isOnboardingExempt = ONBOARDING_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  if (user && hasAcceptedTerms && !hasCompletedOnboarding && !isOnboardingExempt && !user.is_anonymous) {
+    return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
+  }
+  if (user && hasCompletedOnboarding && pathname === ONBOARDING_PATH) {
     return NextResponse.redirect(new URL('/executive-board', request.url));
   }
 
