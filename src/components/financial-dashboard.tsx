@@ -116,8 +116,8 @@ function CommandCenter({ onRegister }: CommandCenterProps) {
 
   return (
     <section aria-label="Centro de comandos" className="sticky top-3 z-30 mx-auto w-[calc(100%-2rem)] max-w-5xl">
-      <div className="command-shell overflow-hidden rounded-2xl p-2 sm:p-2.5">
-        <div className="flex items-center gap-1.5">
+      <div className="command-shell overflow-hidden rounded-2xl p-3.5 sm:p-4">
+        <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="shrink-0 rounded-xl text-muted-foreground hover:bg-foreground/5" aria-label="Adjuntar archivo">
             <Paperclip />
           </Button>
@@ -147,14 +147,14 @@ function CommandCenter({ onRegister }: CommandCenterProps) {
             </Button>
           </div>
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-1.5 border-t border-line/70 pt-2">
-          <Button variant="ghost" onClick={onRegister} className="h-9 rounded-lg bg-primary/10 px-2 text-[11px] text-primary hover:bg-primary/15 sm:text-xs">
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line/60 pt-3">
+          <Button variant="ghost" onClick={onRegister} className="h-10 rounded-xl border border-primary/15 bg-primary/10 px-3 text-[11px] text-primary hover:border-primary/25 hover:bg-primary/15 sm:text-xs">
             <Plus /> <span>Registrar</span>
           </Button>
-          <Button variant="ghost" className="h-9 rounded-lg px-2 text-[11px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground sm:text-xs">
+          <Button variant="ghost" className="h-10 rounded-xl border border-line/60 bg-foreground/[0.02] px-3 text-[11px] text-muted-foreground hover:border-line hover:bg-foreground/5 hover:text-foreground sm:text-xs">
             <FileSpreadsheet /> <span className="truncate">Importar CSV</span>
           </Button>
-          <Button variant="ghost" className="h-9 rounded-lg px-2 text-[11px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground sm:text-xs">
+          <Button variant="ghost" className="h-10 rounded-xl border border-line/60 bg-foreground/[0.02] px-3 text-[11px] text-muted-foreground hover:border-line hover:bg-foreground/5 hover:text-foreground sm:text-xs">
             <FileText /> <span className="truncate">Factura XML</span>
           </Button>
         </div>
@@ -336,10 +336,14 @@ function Transactions() {
               <p className="truncate text-sm font-medium">{transaction.counterparty}</p>
               <p className="mt-1 truncate text-[11px] text-muted-foreground">{transaction.detail}</p>
             </div>
-            <Badge variant="outline" className="hidden w-fit border-line/80 bg-foreground/[0.03] text-[10px] font-normal text-muted-foreground sm:flex">{transaction.category}</Badge>
+            <Badge variant="outline" className="hidden w-fit border-line/70 bg-foreground/[0.04] text-[10px] font-medium text-muted-foreground sm:flex">{transaction.category}</Badge>
             <div className="hidden sm:block">
               <p className="text-[11px] text-muted-foreground">{transaction.date}</p>
-              <p className={cn("mt-1 text-[10px]", transaction.status === "Conciliado" ? "text-positive" : transaction.status === "Pendiente" ? "text-gold" : "text-muted-foreground")}>{transaction.status}</p>
+              <span className={cn("mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                transaction.status === "Conciliado" ? "border-positive/25 bg-positive/10 text-positive" : transaction.status === "Pendiente" ? "border-gold/25 bg-gold/10 text-gold" : "border-line/70 bg-foreground/[0.04] text-muted-foreground")}>
+                <span className={cn("size-1.5 rounded-full", transaction.status === "Conciliado" ? "bg-positive" : transaction.status === "Pendiente" ? "bg-gold" : "bg-muted-foreground")} />
+                {transaction.status}
+              </span>
             </div>
             <div className={cn("text-right font-mono text-sm font-medium tabular-nums", transaction.type === "credit" && "text-positive")}>{transaction.type === "credit" ? "+" : "−"}{formatCurrency(Math.abs(transaction.amount), true)}</div>
           </div>
