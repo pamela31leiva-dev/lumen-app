@@ -508,11 +508,11 @@
   .compact-command-shell { min-height: 3rem; }
   .command-shortcuts { display: none; }
   .portfolio-scene { grid-template-columns: 1fr; align-content: center; gap: 0.7rem; padding: 0.5rem 0 0.65rem; }
-  .wealth-blob { width: 100%; aspect-ratio: auto; min-height: 15.25rem; padding: 1.65rem 1.5rem; border-radius: 2.8rem 5.6rem 3.1rem 4.6rem; }
+  .wealth-blob { width: 100%; aspect-ratio: auto; min-height: 14.35rem; padding: 1.45rem 1.5rem; border-radius: 2.8rem 5.6rem 3.1rem 4.6rem; }
   .wealth-total { font-size: clamp(3.35rem, 17vw, 4.55rem); }
   .asset-stack { gap: 0.42rem; }
   .asset-stack > div { display: none; }
-  .asset-module { min-height: 4.1rem; grid-template-columns: 1.9rem minmax(0, 1fr) auto; padding: 0.55rem 0.8rem; border-radius: 0.9rem 2rem 0.9rem 2rem; }
+  .asset-module { min-height: 3.95rem; grid-template-columns: 1.9rem minmax(0, 1fr) auto; padding: 0.45rem 0.8rem; border-radius: 0.9rem 2rem 0.9rem 2rem; }
   .asset-module .font-display { font-size: 1rem; }
   .asset-index { width: 1.55rem; height: 1.55rem; }
   .asset-module:hover, .asset-module.is-active { transform: translateX(-0.2rem); }
