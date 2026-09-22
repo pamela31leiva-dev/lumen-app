@@ -235,53 +235,53 @@ function RevenueChart() {
         <AreaChart data={monthlyData} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
           <defs>
             <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-positive)" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="var(--color-positive)" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#5ee0a0" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#5ee0a0" stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-negative)" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="var(--color-negative)" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#f87171" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#f87171" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="var(--color-line)"
+            stroke="#262E44"
             vertical={false}
           />
           <XAxis
             dataKey="month"
-            stroke="var(--color-muted-foreground)"
+            stroke="#8a93a8"
             fontSize={11}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="var(--color-muted-foreground)"
+            stroke="#8a93a8"
             fontSize={11}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "var(--color-elev)",
-              border: "1px solid var(--color-line)",
+              backgroundColor: "#1A2135",
+              border: "1px solid #262E44",
               borderRadius: "8px",
               fontSize: "12px",
-              color: "var(--color-foreground)",
+              color: "#f8fafc",
             }}
-            labelStyle={{ color: "var(--color-muted-foreground)" }}
+            labelStyle={{ color: "#8a93a8" }}
           />
           <Area
             type="monotone"
             dataKey="revenue"
-            stroke="var(--color-positive)"
+            stroke="#5ee0a0"
             strokeWidth={2}
             fill="url(#revGrad)"
           />
           <Area
             type="monotone"
             dataKey="expense"
-            stroke="var(--color-negative)"
+            stroke="#f87171"
             strokeWidth={2}
             fill="url(#expGrad)"
           />
