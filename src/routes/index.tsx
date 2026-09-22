@@ -6,17 +6,17 @@ export const Route = createFileRoute("/")({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Vantage — Financial Dashboard" },
+      { title: "Lumen — Centro de Inteligencia Patrimonial" },
       {
         name: "description",
         content:
-          "Financial dashboard: track income, expenses, budgets, portfolio allocation, and recent transactions.",
+          "Consolida, comprende y gestiona tu patrimonio con claridad privada y precisión financiera.",
       },
-      { property: "og:title", content: "Vantage — Financial Dashboard" },
+      { property: "og:title", content: "Lumen — Centro de Inteligencia Patrimonial" },
       {
         property: "og:description",
         content:
-          "Financial dashboard: track income, expenses, budgets, portfolio allocation, and recent transactions.",
+          "Consolida, comprende y gestiona tu patrimonio con claridad privada y precisión financiera.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
