@@ -334,25 +334,20 @@ function PortfolioDonut() {
         Por clase de activo
       </p>
       <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row">
-        <div className="size-40 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={allocation}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                innerRadius={48}
-                outerRadius={70}
-                paddingAngle={2}
-                stroke="none"
-              >
-                {allocation.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
+        <div
+          className="relative grid size-40 shrink-0 place-items-center rounded-full"
+          style={{
+            background: `conic-gradient(#5ee0a0 0 42%, #5b9bff 42% 71%, #e7c56b 71% 88%, #8a93a8 88% 100%)`,
+          }}
+        >
+          <div className="grid size-24 place-items-center rounded-full bg-surface text-center">
+            <div>
+              <p className="font-mono text-lg font-semibold">$2.4M</p>
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                Patrimonio
+              </p>
+            </div>
+          </div>
         </div>
         <div className="flex flex-1 flex-col gap-2.5 text-sm">
           {allocation.map((a) => (
