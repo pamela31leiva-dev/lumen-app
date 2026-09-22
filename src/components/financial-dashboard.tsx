@@ -112,7 +112,7 @@ function GlowSurface({ children, className }: { children: React.ReactNode; class
 
 function WealthStage() {
   return (
-    <section id="patrimonio" className="wealth-stage relative min-h-[630px] pt-10 lg:min-h-[680px]">
+    <section id="patrimonio" className="wealth-stage relative min-h-[510px] pt-8 lg:min-h-[520px] lg:pt-10">
       <div className="absolute left-0 top-28 hidden h-px w-24 bg-gradient-to-r from-transparent to-primary/60 lg:block" />
       <div className="relative z-10 max-w-5xl">
         <p className="section-kicker mb-5">Consolidado familiar · COP</p>
@@ -123,7 +123,7 @@ function WealthStage() {
         </div>
       </div>
 
-      <GlowSurface className="liquidity-island absolute right-0 top-12 w-[min(36vw,430px)] p-7 max-lg:relative max-lg:mt-12 max-lg:w-full">
+      <GlowSurface className="liquidity-island absolute right-0 top-10 w-[min(35vw,410px)] p-7 max-lg:relative max-lg:mt-9 max-lg:w-full">
         <p className="section-kicker">Liquidez inmediata</p>
         <p className="mt-4 font-display text-5xl tabular-nums">{formatCurrency(wealthMetrics.monthlyLiquidity, true)}</p>
         <div className="mt-8 flex items-end justify-between border-t border-line/60 pt-5">
@@ -132,11 +132,11 @@ function WealthStage() {
         </div>
       </GlowSurface>
 
-      <GlowSurface className="coverage-orb absolute bottom-8 left-[8%] grid size-56 place-items-center rounded-full p-7 text-center max-lg:relative max-lg:bottom-auto max-lg:left-auto max-lg:mt-5 max-lg:size-48">
+      <GlowSurface className="coverage-orb absolute bottom-5 left-[7%] grid size-44 place-items-center rounded-full p-6 text-center max-lg:relative max-lg:bottom-auto max-lg:left-auto max-lg:-mt-3 max-lg:ml-auto max-lg:size-36">
         <div><ShieldCheck className="mx-auto mb-3 size-5 text-gold" /><p className="font-display text-4xl">{wealthMetrics.cashCoverage}</p><p className="mt-1 text-[10px] uppercase text-muted-foreground">meses de cobertura</p></div>
       </GlowSurface>
 
-      <div className="absolute bottom-14 right-[12%] hidden w-72 lg:block">
+      <div className="absolute bottom-10 right-[10%] hidden w-72 lg:block">
         <p className="font-display text-3xl leading-tight text-foreground/90">Claridad suficiente para decidir sin ruido.</p>
         <p className="mt-4 text-xs leading-relaxed text-muted-foreground">Actualizado hoy, 11:03. Datos consolidados y conciliados.</p>
       </div>
@@ -147,12 +147,12 @@ function WealthStage() {
 function WealthChart() {
   const [period, setPeriod] = useState<(typeof periods)[number]>("1A");
   return (
-    <section id="trayectoria" className="chart-field relative py-10 lg:py-16" aria-labelledby="evolucion-title">
+    <section id="trayectoria" className="chart-field relative py-8 lg:py-10" aria-labelledby="evolucion-title">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4 px-1 lg:px-8">
         <div><p className="section-kicker">Evolución consolidada</p><h2 id="evolucion-title" className="mt-2 font-display text-5xl">Trayectoria</h2></div>
         <div className="flex rounded-full border border-line bg-background/40 p-1 backdrop-blur-xl">{periods.map((item) => <Button key={item} variant="ghost" size="sm" onClick={() => setPeriod(item)} className={cn("h-8 rounded-full px-3 text-[10px] text-muted-foreground", period === item && "bg-foreground/10 text-foreground")}>{item}</Button>)}</div>
       </div>
-      <div className="h-[360px] w-full sm:h-[430px]">
+      <div className="h-[300px] w-full sm:h-[340px]">
         <ResponsiveContainer width="100%" height="100%"><AreaChart data={wealthHistory} margin={{ top: 30, right: 8, left: -25, bottom: 0 }}>
           <defs><linearGradient id="wealthFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3}/><stop offset="100%" stopColor="var(--primary)" stopOpacity={0}/></linearGradient></defs>
           <XAxis dataKey="month" tickLine={false} axisLine={false} stroke="var(--muted-foreground)" fontSize={11}/><YAxis domain={[11000,13800]} tickFormatter={(v) => `$${(v/1000).toFixed(1)}B`} tickLine={false} axisLine={false} stroke="var(--muted-foreground)" fontSize={10}/>
@@ -196,5 +196,5 @@ function RegisterDialog({open,onOpenChange}:{open:boolean;onOpenChange:(open:boo
 
 export function FinancialDashboard(){
   const [registerOpen,setRegisterOpen]=useState(false);
-  return <div className="lumen-atmosphere min-h-screen overflow-hidden bg-background font-sans text-foreground"><Header/><CommandCenter onRegister={()=>setRegisterOpen(true)}/><main className="relative mx-auto w-full max-w-[1500px] px-5 pb-20 sm:px-10 lg:px-14"><WealthStage/><div className="editorial-divider"/><WealthChart/><div className="relative mt-4 lg:min-h-[560px]"><div className="lg:w-[72%]"><Transactions/></div><div className="mt-8 lg:absolute lg:-right-3 lg:top-10 lg:mt-0 lg:w-[36%]"><AllocationPanel/></div></div><footer className="mt-24 flex flex-col gap-3 border-t border-line/50 pt-6 text-[10px] uppercase text-muted-foreground sm:flex-row sm:justify-between"><p className="flex items-center gap-2"><Landmark className="size-3.5"/>Lumen Private Wealth</p><p>Última sincronización 11:03 · Cifras en pesos colombianos</p></footer></main><RegisterDialog open={registerOpen} onOpenChange={setRegisterOpen}/></div>;
+  return <div className="lumen-atmosphere min-h-screen overflow-hidden bg-background font-sans text-foreground"><Header/><CommandCenter onRegister={()=>setRegisterOpen(true)}/><main className="spatial-canvas relative mx-auto mt-5 w-[calc(100%-1.5rem)] max-w-[1400px] px-4 pb-12 sm:w-[calc(100%-3rem)] sm:px-7 lg:px-10"><WealthStage/><div className="editorial-divider"/><WealthChart/><div className="relative mt-1 lg:min-h-[520px]"><div className="lg:w-[72%]"><Transactions/></div><div className="mt-6 lg:absolute lg:-right-2 lg:top-8 lg:mt-0 lg:w-[36%]"><AllocationPanel/></div></div><footer className="mt-14 flex flex-col gap-3 border-t border-line/50 pt-6 text-[10px] uppercase text-muted-foreground sm:flex-row sm:justify-between"><p className="flex items-center gap-2"><Landmark className="size-3.5"/>Lumen Private Wealth</p><p>Última sincronización 11:03 · Cifras en pesos colombianos</p></footer></main><RegisterDialog open={registerOpen} onOpenChange={setRegisterOpen}/></div>;
 }
