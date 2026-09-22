@@ -260,7 +260,7 @@
   font-size: clamp(4.7rem, 11vw, 10.5rem);
   line-height: 0.78;
   font-weight: 400;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-wrap: balance;
   text-shadow: 0 18px 70px oklch(0.02 0.01 160 / 0.7);
 }
