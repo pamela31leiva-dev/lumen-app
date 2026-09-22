@@ -51,12 +51,12 @@ const periods = ["1M", "6M", "1A", "Todo"] as const;
 
 function formatCurrency(value: number, compact = false) {
   if (compact) {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      notation: "compact",
-      maximumFractionDigits: 2,
-    }).format(value);
+    const absoluteValue = Math.abs(value);
+    const divisor = absoluteValue >= 1_000_000_000 ? 1_000_000_000 : 1_000_000;
+    const suffix = absoluteValue >= 1_000_000_000 ? "MRD" : "M";
+    const scaled = value / divisor;
+    const decimals = Number.isInteger(scaled) ? 0 : scaled >= 10 ? 1 : 2;
+    return `$${scaled.toFixed(decimals).replace(".", ",")} ${suffix}`;
   }
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
