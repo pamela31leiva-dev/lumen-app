@@ -334,8 +334,8 @@ function PortfolioDonut() {
         Por clase de activo
       </p>
       <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row">
-        <ResponsiveContainer width={160} height={160}>
-          <PieChart>
+        <div className="size-40 shrink-0">
+          <PieChart width={160} height={160}>
             <Pie
               data={allocation}
               dataKey="value"
@@ -349,7 +349,7 @@ function PortfolioDonut() {
               ))}
             </Pie>
           </PieChart>
-        </ResponsiveContainer>
+        </div>
         <div className="flex flex-1 flex-col gap-2.5 text-sm">
           {allocation.map((a) => (
             <div key={a.name} className="flex items-center justify-between">
