@@ -51,7 +51,7 @@
   --color-surface: var(--surface);
   --color-elev: var(--elev);
   --color-line: var(--line);
-  --font-display: "Instrument Serif", serif;
+  --font-display: "Space Grotesk", sans-serif;
   --font-sans: "Work Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 }
@@ -214,7 +214,7 @@
   background: oklch(0.79 0.13 157 / 0.08);
   box-shadow: inset 0 1px 0 var(--glass-highlight), 0 0 26px var(--primary-glow);
   color: var(--primary);
-  font-family: "Instrument Serif", serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 1.35rem;
 }
 
@@ -257,12 +257,17 @@
 
 @utility wealth-number {
   max-width: 11ch;
-  font-size: clamp(4.7rem, 11vw, 10.5rem);
-  line-height: 0.78;
-  font-weight: 400;
+  font-size: clamp(4rem, 9vw, 8.6rem);
+  line-height: 0.86;
+  font-weight: 600;
   letter-spacing: 0;
   text-wrap: balance;
   text-shadow: 0 18px 70px oklch(0.02 0.01 160 / 0.7);
+}
+
+@utility spatial-canvas {
+  border-inline: 1px solid oklch(0.8 0.05 157 / 0.045);
+  background: linear-gradient(180deg, oklch(0.14 0.028 158 / 0.2), transparent 38%);
 }
 
 @utility spatial-surface {
@@ -327,6 +332,12 @@
   .liquidity-island { border-radius: 3rem 1rem 3rem 3rem; }
   .transactions-sheet { border-radius: 1rem 3rem 1rem 3rem; }
   .allocation-float { border-radius: 3rem 1rem 3rem 3rem; }
+}
+
+@media (max-width: 639px) {
+  .wealth-stage { min-height: auto; padding-bottom: 1.5rem; }
+  .wealth-number { font-size: clamp(3.45rem, 17vw, 5.1rem); }
+  .chart-field { padding-block: 2rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
