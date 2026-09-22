@@ -38,10 +38,10 @@ export const budgets = [
 ];
 
 export const allocation = [
-  { name: "Renta variable", value: 42, color: "var(--color-positive)" },
-  { name: "Renta fija", value: 29, color: "var(--color-chart-2)" },
-  { name: "Efectivo", value: 17, color: "var(--color-gold)" },
-  { name: "Alternativos", value: 12, color: "var(--color-muted-foreground)" },
+  { name: "Renta variable", value: 42, color: "#5ee0a0" },
+  { name: "Renta fija", value: 29, color: "#5b9bff" },
+  { name: "Efectivo", value: 17, color: "#e7c56b" },
+  { name: "Alternativos", value: 12, color: "#8a93a8" },
 ];
 
 export type Transaction = {
