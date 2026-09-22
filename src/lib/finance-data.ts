@@ -1,112 +1,100 @@
-// Demo data for the financial dashboard — all values are illustrative.
+export const wealthHistory = [
+  { month: "Oct", value: 11380 },
+  { month: "Nov", value: 11520 },
+  { month: "Dic", value: 11470 },
+  { month: "Ene", value: 11760 },
+  { month: "Feb", value: 11910 },
+  { month: "Mar", value: 12180 },
+  { month: "Abr", value: 12090 },
+  { month: "May", value: 12440 },
+  { month: "Jun", value: 12620 },
+  { month: "Jul", value: 12890 },
+  { month: "Ago", value: 13140 },
+  { month: "Sep", value: 13486 },
+];
 
-export const kpis = {
-  totalBalance: 482940.57,
-  income: 1284000,
-  expenses: 842000,
-  netBalance: 438000,
-  savingsRate: 34.2,
-  available: 128310,
-  invested: 354630,
-  incomeChange: 12.4,
-  expenseChange: 3.1,
-  netChange: 8.9,
-  savingsChange: 2.3,
+export const wealthMetrics = {
+  netWorth: 13_486_290_000,
+  monthlyLiquidity: 286_420_000,
+  monthlyIncome: 412_800_000,
+  monthlyOutflow: 126_380_000,
+  twelveMonthReturn: 8.42,
+  cashCoverage: 18.6,
 };
 
-export const monthlyData = [
-  { month: "Dic", revenue: 92, expense: 58 },
-  { month: "Ene", revenue: 98, expense: 62 },
-  { month: "Feb", revenue: 85, expense: 55 },
-  { month: "Mar", revenue: 104, expense: 63 },
-  { month: "Abr", revenue: 96, expense: 60 },
-  { month: "May", revenue: 112, expense: 66 },
-  { month: "Jun", revenue: 108, expense: 64 },
-  { month: "Jul", revenue: 122, expense: 68 },
-  { month: "Ago", revenue: 118, expense: 66 },
-  { month: "Sep", revenue: 135, expense: 72 },
-  { month: "Oct", revenue: 128, expense: 70 },
-  { month: "Nov", revenue: 142, expense: 75 },
-];
-
-export const budgets = [
-  { name: "Nómina", spent: 318, allocated: 400, pct: 79.5 },
-  { name: "Nube e infra", spent: 96, allocated: 120, pct: 80 },
-  { name: "Marketing", spent: 41, allocated: 80, pct: 51.3 },
-  { name: "I+D", spent: 58, allocated: 70, pct: 82.9 },
-  { name: "Operaciones", spent: 34, allocated: 50, pct: 68 },
-];
-
 export const allocation = [
-  { name: "Renta variable", value: 42, color: "#5ee0a0" },
-  { name: "Renta fija", value: 29, color: "#5b9bff" },
-  { name: "Efectivo", value: 17, color: "#e7c56b" },
-  { name: "Alternativos", value: 12, color: "#8a93a8" },
+  { name: "Mercados públicos", value: 38, token: "bg-positive" },
+  { name: "Activos privados", value: 27, token: "bg-chart-2" },
+  { name: "Bienes raíces", value: 21, token: "bg-gold" },
+  { name: "Liquidez", value: 14, token: "bg-chart-5" },
 ];
 
 export type Transaction = {
   id: string;
   counterparty: string;
+  detail: string;
   category: string;
   date: string;
-  status: "Pagado" | "Pendiente";
+  status: "Conciliado" | "Pendiente" | "Programado";
   amount: number;
   type: "credit" | "debit";
+  initials: string;
 };
 
 export const transactions: Transaction[] = [
   {
-    id: "1",
-    counterparty: "Northwind Logistics",
-    category: "Factura",
-    date: "24 Nov",
-    status: "Pagado",
-    amount: -18420,
-    type: "debit",
-  },
-  {
-    id: "2",
-    counterparty: "Meridian Trust Co.",
-    category: "Ingresos",
-    date: "24 Nov",
-    status: "Pagado",
-    amount: 64900,
+    id: "tx-8041",
+    counterparty: "Fondo BlackRock Global Allocation",
+    detail: "Distribución trimestral · Portafolio 0821",
+    category: "Inversiones",
+    date: "Hoy, 09:42",
+    status: "Conciliado",
+    amount: 48_920_000,
     type: "credit",
+    initials: "BR",
   },
   {
-    id: "3",
-    counterparty: "Atlas Cloud Services",
-    category: "Infraestructura",
-    date: "23 Nov",
+    id: "tx-8038",
+    counterparty: "Administración Torre 93",
+    detail: "Cuota de administración · Septiembre",
+    category: "Inmuebles",
+    date: "Hoy, 07:18",
+    status: "Conciliado",
+    amount: -8_740_000,
+    type: "debit",
+    initials: "T9",
+  },
+  {
+    id: "tx-8034",
+    counterparty: "Bancolombia Fiduciaria",
+    detail: "Rendimientos FIC Renta Liquidez",
+    category: "Rendimientos",
+    date: "Ayer, 16:05",
+    status: "Conciliado",
+    amount: 16_380_000,
+    type: "credit",
+    initials: "BF",
+  },
+  {
+    id: "tx-8029",
+    counterparty: "Cardif Colombia Seguros",
+    detail: "Prima anual · Póliza patrimonial",
+    category: "Protección",
+    date: "21 sep, 11:30",
     status: "Pendiente",
-    amount: -4210,
+    amount: -12_460_000,
     type: "debit",
+    initials: "CS",
   },
   {
-    id: "4",
-    counterparty: "Dividendo trimestral",
-    category: "Cartera",
-    date: "22 Nov",
-    status: "Pagado",
-    amount: 9750,
-    type: "credit",
-  },
-  {
-    id: "5",
-    counterparty: "Payload Staffing",
-    category: "Nómina",
-    date: "21 Nov",
-    status: "Pagado",
-    amount: -38600,
+    id: "tx-8022",
+    counterparty: "Tributi Private Advisory",
+    detail: "Planeación fiscal · Q3 2026",
+    category: "Honorarios",
+    date: "20 sep, 14:12",
+    status: "Programado",
+    amount: -6_850_000,
     type: "debit",
-  },
-  {
-    id: "6",
-    counterparty: "Cascade Legal",
-    category: "Servicios",
-    date: "20 Nov",
-    status: "Pagado",
-    amount: 2750,
-    type: "credit",
+    initials: "TP",
   },
 ];
