@@ -277,6 +277,7 @@ function RevenueChart() {
             stroke="#5ee0a0"
             strokeWidth={2}
             fill="url(#revGrad)"
+            isAnimationActive={false}
           />
           <Area
             type="monotone"
@@ -284,6 +285,7 @@ function RevenueChart() {
             stroke="#f87171"
             strokeWidth={2}
             fill="url(#expGrad)"
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>
