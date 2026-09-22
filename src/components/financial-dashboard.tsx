@@ -335,20 +335,24 @@ function PortfolioDonut() {
       </p>
       <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row">
         <div className="size-40 shrink-0">
-          <PieChart width={160} height={160}>
-            <Pie
-              data={allocation}
-              dataKey="value"
-              innerRadius={48}
-              outerRadius={70}
-              paddingAngle={2}
-              stroke="none"
-            >
-              {allocation.map((entry, i) => (
-                <Cell key={i} fill={entry.color} />
-              ))}
-            </Pie>
-          </PieChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={allocation}
+                dataKey="value"
+                cx="50%"
+                cy="50%"
+                innerRadius={48}
+                outerRadius={70}
+                paddingAngle={2}
+                stroke="none"
+              >
+                {allocation.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
         </div>
         <div className="flex flex-1 flex-col gap-2.5 text-sm">
           {allocation.map((a) => (
